@@ -1,20 +1,29 @@
 use bevy::prelude::*;
+use econbox_simulation::SimulationStarter;
 
 const PLAYER_SPEED: f32 = 300.0;
 
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "econbox".into(),
-                resolution: (1280, 720).into(),
-                ..default()
-            }),
+pub fn app() -> App {
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "econbox".into(),
+            resolution: (1280, 720).into(),
             ..default()
-        }))
-        .add_systems(Startup, setup)
-        .add_systems(Update, move_player)
-        .run();
+        }),
+        ..default()
+    }))
+    .add_plugins(SimulationStarter)
+    .add_systems(Startup, setup)
+    .add_systems(Update, move_player);
+    app
+}
+
+pub fn headless_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(SimulationStarter);
+    app
 }
 
 #[derive(Component)]

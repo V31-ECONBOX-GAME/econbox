@@ -1,0 +1,15 @@
+[package]
+name = "politics"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+bevy = { workspace = true }
+econbox_core = { workspace = true }
+econbox_society = { workspace = true }
+econbox_economy = { workspace = true }
+econbox_finance = { workspace = true }
+
+[lints]
+workspace = true

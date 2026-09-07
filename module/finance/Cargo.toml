@@ -1,0 +1,13 @@
+[package]
+name = "finance"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+bevy = { workspace = true }
+econbox_core = { workspace = true }
+econbox_economy = { workspace = true }
+
+[lints]
+workspace = true

@@ -1849,6 +1849,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "boot"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "simulation",
+]
+
+[[package]]
+name = "buildsrc"
+version = "0.1.0"
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2053,6 +2065,10 @@ checksum = "633458d4ef8c78b72454de2d54fd6ab2e60f9e02be22f3c6104cdc8a4e0fceb9"
 dependencies = [
  "unicode-segmentation",
 ]
+
+[[package]]
+name = "core"
+version = "0.1.0"
 
 [[package]]
 name = "core-foundation"
@@ -2325,10 +2341,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
-name = "econbox"
+name = "economy"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "core",
+ "population",
+ "world",
 ]
 
 [[package]]
@@ -2443,6 +2462,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "finance"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "core",
+ "economy",
 ]
 
 [[package]]
@@ -4100,6 +4128,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "politics"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "core",
+ "economy",
+ "finance",
+ "society",
+]
+
+[[package]]
 name = "polling"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4111,6 +4150,15 @@ dependencies = [
  "pin-project-lite",
  "rustix 1.1.4",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "population"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "core",
+ "world",
 ]
 
 [[package]]
@@ -4444,6 +4492,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scenario"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "boot",
+ "economy",
+ "finance",
+ "politics",
+ "population",
+ "society",
+ "world",
+]
+
+[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4548,6 +4610,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
+name = "simulation"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "economy",
+ "finance",
+ "politics",
+ "population",
+ "society",
+ "world",
+]
+
+[[package]]
 name = "skrifa"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4620,6 +4695,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "society"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "core",
+ "population",
 ]
 
 [[package]]
@@ -5921,6 +6005,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "world"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "core",
+]
+
+[[package]]
 name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5988,10 +6080,6 @@ name = "xml-rs"
 version = "0.8.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
-
-[[package]]
-name = "xtask"
-version = "0.1.0"
 
 [[package]]
 name = "yazi"

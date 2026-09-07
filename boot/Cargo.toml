@@ -1,0 +1,23 @@
+[package]
+name = "boot"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "econbox"
+path = "src/lib.rs"
+
+[[bin]]
+name = "econbox"
+path = "src/main.rs"
+
+[dependencies]
+bevy = { workspace = true, features = ["2d", "ui", "audio"] }
+econbox_simulation = { workspace = true }
+
+[features]
+fast-link = ["bevy/dynamic_linking"]
+
+[lints]
+workspace = true

@@ -5,7 +5,7 @@ use std::process::{Command, ExitCode};
 
 type Result<T> = std::result::Result<T, String>;
 
-const USAGE: &str = "usage: cargo xtask <task>
+const USAGE: &str = "usage: cargo buildsrc <task>
 
 tasks:
   ci      format check, clippy, tests
@@ -47,7 +47,7 @@ fn dist() -> Result<()> {
     let dist = root.join("dist");
     let assets = root.join("assets");
 
-    cargo(&["build", "--release", "--package", "econbox"])?;
+    cargo(&["build", "--release", "--package", "boot"])?;
 
     let binary = root.join("target/release/econbox");
     reject_dynamic_linking(&binary)?;
@@ -132,7 +132,7 @@ fn package_version(root: &Path) -> Result<String> {
     for line in manifest.lines() {
         let line = line.trim();
         if line.starts_with('[') {
-            in_package = line == "[package]";
+            in_package = line == "[workspace.package]";
         } else if in_package
             && let Some((key, value)) = line.split_once('=')
             && key.trim() == "version"
@@ -140,7 +140,7 @@ fn package_version(root: &Path) -> Result<String> {
             return Ok(value.trim().trim_matches('"').to_string());
         }
     }
-    Err("Cargo.toml has no version under [package]".to_string())
+    Err("Cargo.toml has no version under [workspace.package]".to_string())
 }
 
 fn cargo(args: &[&str]) -> Result<()> {

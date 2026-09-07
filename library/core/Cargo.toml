@@ -1,0 +1,11 @@
+[package]
+name = "core"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "econbox_core"
+
+[lints]
+workspace = true

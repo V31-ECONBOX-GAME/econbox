@@ -1,0 +1,18 @@
+[package]
+name = "scenario"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+bevy = { workspace = true }
+econbox = { workspace = true }
+econbox_world = { workspace = true }
+econbox_population = { workspace = true }
+econbox_society = { workspace = true }
+econbox_economy = { workspace = true }
+econbox_finance = { workspace = true }
+econbox_politics = { workspace = true }
+
+[lints]
+workspace = true

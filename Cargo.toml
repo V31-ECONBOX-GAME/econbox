@@ -1,18 +1,25 @@
 [workspace]
-members = ["xtask"]
+resolver = "3"
+members = ["library/*", "module/*", "starter/*", "boot", "integration-test/*", "buildsrc"]
+default-members = ["boot"]
 
-[package]
-name = "econbox"
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-bevy = { version = "0.19.1", default-features = false, features = ["2d", "ui", "audio"] }
+[workspace.dependencies]
+bevy = { version = "0.19.1", default-features = false }
+econbox_core = { path = "library/core", package = "core" }
+econbox_world = { path = "module/world", package = "world" }
+econbox_population = { path = "module/population", package = "population" }
+econbox_society = { path = "module/society", package = "society" }
+econbox_economy = { path = "module/economy", package = "economy" }
+econbox_finance = { path = "module/finance", package = "finance" }
+econbox_politics = { path = "module/politics", package = "politics" }
+econbox_simulation = { path = "starter/simulation", package = "simulation" }
+econbox = { path = "boot", package = "boot" }
 
-[features]
-fast-link = ["bevy/dynamic_linking"]
-
-[lints.clippy]
+[workspace.lints.clippy]
 too_many_arguments = "allow"
 type_complexity = "allow"
 
