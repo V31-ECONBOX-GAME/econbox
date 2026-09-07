@@ -1,0 +1,12 @@
+#!/bin/sh
+
+hook_dir=$(dirname "$0")
+changed=$("$hook_dir/coding-time" 2>/dev/null) || exit 0
+
+# Stage only what the script rewrote.
+[ -n "$changed" ] || exit 0
+root=$(git rev-parse --show-toplevel)
+printf '%s\n' "$changed" | while IFS= read -r path; do
+	[ -n "$path" ] && [ -f "$root/$path" ] && git add -- "$root/$path"
+done
+exit 0

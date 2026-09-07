@@ -1,0 +1,8 @@
+/target
+.DS_Store
+.idea/*
+!.idea/icon.svg
+!readme/
+.claude
+CLAUDE.md
+/dist

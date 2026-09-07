@@ -1,0 +1,25 @@
+[package]
+name = "econbox"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.19.1", default-features = false, features = ["2d", "ui", "audio"] }
+
+[features]
+fast-link = ["bevy/dynamic_linking"]
+
+[lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = true

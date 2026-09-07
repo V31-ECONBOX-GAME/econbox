@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+#   GAP_MINUTES=120 .githooks/coding-time        shorter sitting
+#   OPENING_MINUTES=120 .githooks/coding-time    less for an opening commit
+#   RECENT_DAYS=14 .githooks/coding-time         shorter "recently"
+#   DAYS=60 .githooks/coding-time                longer chart
+#
+set -eu
+
+LC_ALL=C
+export LC_ALL
+
+GAP_MINUTES=${GAP_MINUTES:-120}
+OPENING_MINUTES=${OPENING_MINUTES:-120}
+RECENT_DAYS=${RECENT_DAYS:-14}
+DAYS=${DAYS:-60}
+
+program=$(cd "$(dirname "$0")" && pwd)/coding-time.awk
+[ -f "$program" ] || exit 0
+
+cd "$(git rev-parse --show-toplevel)"
+
+README=README.md
+CARD=.idea/readme/image/time-on-record.svg
+START='<!-- CODING-TIME:START -->'
+END='<!-- CODING-TIME:END -->'
+
+git rev-parse --verify --quiet HEAD >/dev/null || exit 0
+[ -f "$README" ] || exit 0
+
+grep -qF "$START" "$README" || exit 0
+grep -qF "$END" "$README" || exit 0
+
+history() {
+	git log --no-merges --format='%at' 2>/dev/null
+}
+
+history | grep -q . || exit 0
+
+mkdir -p "$(dirname "$CARD")"
+card=$(mktemp)
+block=$(mktemp)
+updated=$(mktemp)
+trap 'rm -f "$card" "$block" "$updated"' EXIT
+
+history | sort -n | awk \
+	-v gap="$((GAP_MINUTES * 60))" \
+	-v opening="$OPENING_MINUTES" \
+	-v recent="$RECENT_DAYS" \
+	-v days="$DAYS" \
+	-v now="$(date +%s)" \
+	-v card="$card" \
+	-v block="$block" \
+	-f "$program"
+
+[ -s "$card" ] || exit 0
+[ -s "$block" ] || exit 0
+
+# Named on stdout, for the hook to stage.
+cmp -s "$card" "$CARD" 2>/dev/null || { cat "$card" > "$CARD" && echo "$CARD"; }
+
+awk -v start="$START" -v end="$END" -v block="$block" '
+	index($0, start) {
+		print
+		while ((getline line < block) > 0) { print line }
+		close(block)
+		inside = 1
+		next
+	}
+	index($0, end) { inside = 0 }
+	!inside        { print }
+' "$README" > "$updated"
+
+[ -s "$updated" ] || exit 0
+cmp -s "$README" "$updated" || { cat "$updated" > "$README" && echo "$README"; }
