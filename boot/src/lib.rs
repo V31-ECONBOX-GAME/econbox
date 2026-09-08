@@ -1,22 +1,61 @@
+use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
+use bevy::window::{MonitorSelection, WindowMode};
+use econbox_config::AppConfig;
 use econbox_simulation::SimulationStarter;
 
 const PLAYER_SPEED: f32 = 300.0;
 
 pub fn app() -> App {
+    app_with(econbox_config::load())
+}
+
+pub fn app_with(config: AppConfig) -> App {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "econbox".into(),
-            resolution: (1280, 720).into(),
-            ..default()
-        }),
-        ..default()
-    }))
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: config.window.title.clone(),
+                    resolution: (config.window.width, config.window.height).into(),
+                    mode: window_mode(config.window.fullscreen),
+                    ..default()
+                }),
+                ..default()
+            })
+            .set(LogPlugin {
+                level: log_level(&config.log.level),
+                filter: config.log.filter.clone(),
+                ..default()
+            }),
+    )
+    .insert_resource(config)
     .add_plugins(SimulationStarter)
     .add_systems(Startup, setup)
     .add_systems(Update, move_player);
+
+    #[cfg(feature = "dev")]
+    app.add_plugins(econbox_debug::DebugPlugin);
+
     app
+}
+
+fn window_mode(fullscreen: bool) -> WindowMode {
+    if fullscreen {
+        WindowMode::BorderlessFullscreen(MonitorSelection::Current)
+    } else {
+        WindowMode::Windowed
+    }
+}
+
+fn log_level(level: &str) -> Level {
+    match level.to_ascii_lowercase().as_str() {
+        "trace" => Level::TRACE,
+        "debug" => Level::DEBUG,
+        "warn" => Level::WARN,
+        "error" => Level::ERROR,
+        _ => Level::INFO,
+    }
 }
 
 pub fn headless_app() -> App {

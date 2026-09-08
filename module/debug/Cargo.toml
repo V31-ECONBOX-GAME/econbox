@@ -1,0 +1,12 @@
+[package]
+name = "debug"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+bevy = { workspace = true, features = ["bevy_dev_tools", "ui"] }
+econbox_config = { workspace = true }
+
+[lints]
+workspace = true

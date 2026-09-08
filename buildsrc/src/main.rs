@@ -38,7 +38,7 @@ fn ci() -> Result<()> {
         "-D",
         "warnings",
     ])?;
-    cargo(&["test", "--workspace"])
+    cargo_with_profile(&["test", "--workspace"], "test")
 }
 
 fn dist() -> Result<()> {
@@ -46,6 +46,7 @@ fn dist() -> Result<()> {
     let version = package_version(&root)?;
     let dist = root.join("dist");
     let assets = root.join("assets");
+    let config = root.join("config");
 
     cargo(&["build", "--release", "--package", "boot"])?;
 
@@ -62,6 +63,7 @@ fn dist() -> Result<()> {
     create_dir(&contents.join("Resources"))?;
     copy_file(&binary, &macos.join("econbox"))?;
     copy_dir(&assets, &macos.join("assets"))?;
+    copy_dir(&config, &macos.join("config"))?;
     fs::write(contents.join("Info.plist"), info_plist(&version))
         .map_err(|error| format!("write Info.plist: {error}"))?;
 
@@ -69,6 +71,7 @@ fn dist() -> Result<()> {
     create_dir(&plain)?;
     copy_file(&binary, &plain.join("econbox"))?;
     copy_dir(&assets, &plain.join("assets"))?;
+    copy_dir(&config, &plain.join("config"))?;
 
     archive(
         &dist.join("econbox.app"),
@@ -141,6 +144,22 @@ fn package_version(root: &Path) -> Result<String> {
         }
     }
     Err("Cargo.toml has no version under [workspace.package]".to_string())
+}
+
+fn cargo_with_profile(args: &[&str], profile: &str) -> Result<()> {
+    let program = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let status = Command::new(program)
+        .current_dir(project_root())
+        .env("ECONBOX_PROFILE", profile)
+        .args(args)
+        .status()
+        .map_err(|error| format!("run cargo: {error}"))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("cargo {} failed", args.join(" ")))
+    }
 }
 
 fn cargo(args: &[&str]) -> Result<()> {

@@ -14,9 +14,12 @@ path = "src/main.rs"
 
 [dependencies]
 bevy = { workspace = true, features = ["2d", "ui", "audio"] }
+econbox_config = { workspace = true }
+econbox_debug = { workspace = true, optional = true }
 econbox_simulation = { workspace = true }
 
 [features]
+dev = ["dep:econbox_debug"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]
