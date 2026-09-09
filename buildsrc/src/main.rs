@@ -45,10 +45,10 @@ fn dist() -> Result<()> {
     let root = project_root();
     let version = package_version(&root)?;
     let dist = root.join("dist");
+    let resources = root.join("desktop/resources");
     let assets = root.join("assets");
-    let config = root.join("config");
 
-    cargo(&["build", "--release", "--package", "boot"])?;
+    cargo(&["build", "--release", "--package", "desktop"])?;
 
     let binary = root.join("target/release/econbox");
     reject_dynamic_linking(&binary)?;
@@ -62,16 +62,16 @@ fn dist() -> Result<()> {
     create_dir(&macos)?;
     create_dir(&contents.join("Resources"))?;
     copy_file(&binary, &macos.join("econbox"))?;
+    copy_dir(&resources, &macos.join("resources"))?;
     copy_dir(&assets, &macos.join("assets"))?;
-    copy_dir(&config, &macos.join("config"))?;
     fs::write(contents.join("Info.plist"), info_plist(&version))
         .map_err(|error| format!("write Info.plist: {error}"))?;
 
     let plain = dist.join(format!("econbox-{version}"));
     create_dir(&plain)?;
     copy_file(&binary, &plain.join("econbox"))?;
+    copy_dir(&resources, &plain.join("resources"))?;
     copy_dir(&assets, &plain.join("assets"))?;
-    copy_dir(&config, &plain.join("config"))?;
 
     archive(
         &dist.join("econbox.app"),

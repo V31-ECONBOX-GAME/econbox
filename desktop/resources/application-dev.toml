@@ -1,12 +1,8 @@
 [window]
 title = "econbox (dev)"
-width = 1280
-height = 720
-fullscreen = false
 
 [log]
 level = "debug"
-filter = "wgpu=error,naga=warn"
 
 [debug]
 overlay = true

@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 bevy = { workspace = true, features = ["bevy_dev_tools", "ui"] }
-econbox_config = { workspace = true }
+serde = { workspace = true }
 
 [lints]
 workspace = true

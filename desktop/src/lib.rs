@@ -1,41 +1,52 @@
+pub mod config;
+
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{MonitorSelection, WindowMode};
-use econbox_config::AppConfig;
+use config::{LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig};
+use config_rs::Config;
 use econbox_simulation::SimulationStarter;
 
 const PLAYER_SPEED: f32 = 300.0;
 
 pub fn app() -> App {
-    app_with(econbox_config::load())
+    app_with(&config::load().expect("load config"))
 }
 
-pub fn app_with(config: AppConfig) -> App {
+pub fn app_with(source: &Config) -> App {
+    let window: WindowConfig = source.get(WINDOW_KEY).unwrap_or_default();
+    let log: LogConfig = source.get(LOG_KEY).unwrap_or_default();
+
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: config.window.title.clone(),
-                    resolution: (config.window.width, config.window.height).into(),
-                    mode: window_mode(config.window.fullscreen),
+                    title: window.title.clone(),
+                    resolution: (window.width, window.height).into(),
+                    mode: window_mode(window.fullscreen),
                     ..default()
                 }),
                 ..default()
             })
             .set(LogPlugin {
-                level: log_level(&config.log.level),
-                filter: config.log.filter.clone(),
+                level: log_level(&log.level),
+                filter: log_filter(&log.filter),
                 ..default()
             }),
     )
-    .insert_resource(config)
+    .insert_resource(window)
+    .insert_resource(log)
     .add_plugins(SimulationStarter)
     .add_systems(Startup, setup)
     .add_systems(Update, move_player);
 
     #[cfg(feature = "dev")]
-    app.add_plugins(econbox_debug::DebugPlugin);
+    {
+        use econbox_debug::{CONFIG_KEY, DebugConfig, DebugPlugin};
+        app.insert_resource(source.get::<DebugConfig>(CONFIG_KEY).unwrap_or_default())
+            .add_plugins(DebugPlugin);
+    }
 
     app
 }
@@ -45,6 +56,14 @@ fn window_mode(fullscreen: bool) -> WindowMode {
         WindowMode::BorderlessFullscreen(MonitorSelection::Current)
     } else {
         WindowMode::Windowed
+    }
+}
+
+fn log_filter(filter: &str) -> String {
+    if filter.is_empty() {
+        bevy::log::DEFAULT_FILTER.to_string()
+    } else {
+        filter.to_string()
     }
 }
 

@@ -1,24 +1,20 @@
 use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
 use bevy::prelude::*;
-use debug::{DebugPlugin, overlay_enabled};
-use econbox_config::{AppConfig, DebugConfig};
+use debug::{DebugConfig, DebugPlugin, overlay_enabled};
 
-fn app_with_overlay(overlay: bool) -> App {
+fn app_with(overlay: bool) -> App {
     let mut app = App::new();
-    app.insert_resource(AppConfig {
-        debug: DebugConfig {
-            overlay,
-            ..DebugConfig::default()
-        },
-        ..AppConfig::default()
+    app.insert_resource(DebugConfig {
+        overlay,
+        inspector: false,
     });
     app
 }
 
 #[test]
 fn overlay_follows_config() {
-    assert!(overlay_enabled(&app_with_overlay(true)));
-    assert!(!overlay_enabled(&app_with_overlay(false)));
+    assert!(overlay_enabled(&app_with(true)));
+    assert!(!overlay_enabled(&app_with(false)));
 }
 
 #[test]
@@ -28,7 +24,7 @@ fn overlay_is_off_without_config() {
 
 #[test]
 fn disabled_config_adds_nothing() {
-    let mut app = app_with_overlay(false);
+    let mut app = app_with(false);
     app.add_plugins(DebugPlugin);
 
     assert!(!app.is_plugin_added::<FpsOverlayPlugin>());

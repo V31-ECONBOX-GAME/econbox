@@ -1,12 +1,12 @@
 [window]
-title = "econbox (test)"
+title = "econbox"
 width = 1280
 height = 720
 fullscreen = false
 
 [log]
-level = "error"
-filter = "wgpu=error,naga=warn"
+level = "info"
+filter = ""
 
 [debug]
 overlay = false

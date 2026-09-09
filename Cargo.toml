@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["library/*", "module/*", "starter/*", "boot", "integration-test/*", "buildsrc"]
-default-members = ["boot"]
+members = ["library/*", "module/*", "starter/*", "desktop", "ios", "integration-test/*", "buildsrc"]
+default-members = ["desktop"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,9 +10,8 @@ edition = "2024"
 [workspace.dependencies]
 bevy = { version = "0.19.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
-toml = "0.9"
+config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }
 econbox_core = { path = "library/core", package = "core" }
-econbox_config = { path = "library/config", package = "config" }
 econbox_world = { path = "module/world", package = "world" }
 econbox_population = { path = "module/population", package = "population" }
 econbox_society = { path = "module/society", package = "society" }
@@ -21,7 +20,7 @@ econbox_finance = { path = "module/finance", package = "finance" }
 econbox_politics = { path = "module/politics", package = "politics" }
 econbox_debug = { path = "module/debug", package = "debug" }
 econbox_simulation = { path = "starter/simulation", package = "simulation" }
-econbox = { path = "boot", package = "boot" }
+econbox = { path = "desktop", package = "desktop" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"

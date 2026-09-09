@@ -1,0 +1,12 @@
+[package]
+name = "ios"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "econbox_ios"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true
