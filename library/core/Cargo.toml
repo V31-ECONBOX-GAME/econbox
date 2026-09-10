@@ -5,7 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [lib]
-name = "econbox_core"
+name = "entropybox_core"
 
 [lints]
 workspace = true

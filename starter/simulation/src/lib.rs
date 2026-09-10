@@ -1,10 +1,10 @@
 use bevy::app::{PluginGroup, PluginGroupBuilder};
-use econbox_economy::EconomyPlugin;
-use econbox_finance::FinancePlugin;
-use econbox_politics::PoliticsPlugin;
-use econbox_population::PopulationPlugin;
-use econbox_society::SocietyPlugin;
-use econbox_world::WorldPlugin;
+use entropybox_economy::EconomyPlugin;
+use entropybox_finance::FinancePlugin;
+use entropybox_politics::PoliticsPlugin;
+use entropybox_population::PopulationPlugin;
+use entropybox_society::SocietyPlugin;
+use entropybox_world::WorldPlugin;
 
 pub struct SimulationStarter;
 

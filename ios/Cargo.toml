@@ -5,7 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [lib]
-name = "econbox_ios"
+name = "entropybox_ios"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [lints]

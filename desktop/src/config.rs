@@ -25,7 +25,7 @@ pub struct LogConfig {
 }
 
 pub fn active_profile() -> String {
-    env::var("ECONBOX_PROFILE").unwrap_or_else(|_| {
+    env::var("ENTROPYBOX_PROFILE").unwrap_or_else(|_| {
         if cfg!(debug_assertions) {
             "dev".to_string()
         } else {
@@ -35,7 +35,7 @@ pub fn active_profile() -> String {
 }
 
 pub fn config_dir() -> PathBuf {
-    env::var("ECONBOX_CONFIG_DIR")
+    env::var("ENTROPYBOX_CONFIG_DIR")
         .map(PathBuf::from)
         .or_else(|_| env::var("CARGO_MANIFEST_DIR").map(|d| PathBuf::from(d).join("resources")))
         .unwrap_or_else(|_| {

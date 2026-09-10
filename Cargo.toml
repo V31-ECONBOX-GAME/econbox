@@ -12,16 +12,16 @@ publish = false
 bevy = { version = "0.19.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }
-econbox_core = { path = "library/core", package = "core" }
-econbox_world = { path = "module/world", package = "world" }
-econbox_population = { path = "module/population", package = "population" }
-econbox_society = { path = "module/society", package = "society" }
-econbox_economy = { path = "module/economy", package = "economy" }
-econbox_finance = { path = "module/finance", package = "finance" }
-econbox_politics = { path = "module/politics", package = "politics" }
-econbox_debug = { path = "module/debug", package = "debug" }
-econbox_simulation = { path = "starter/simulation", package = "simulation" }
-econbox = { path = "desktop", package = "desktop" }
+entropybox_core = { path = "library/core", package = "core" }
+entropybox_world = { path = "module/world", package = "world" }
+entropybox_population = { path = "module/population", package = "population" }
+entropybox_society = { path = "module/society", package = "society" }
+entropybox_economy = { path = "module/economy", package = "economy" }
+entropybox_finance = { path = "module/finance", package = "finance" }
+entropybox_politics = { path = "module/politics", package = "politics" }
+entropybox_debug = { path = "module/debug", package = "debug" }
+entropybox_simulation = { path = "starter/simulation", package = "simulation" }
+entropybox = { path = "desktop", package = "desktop" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"

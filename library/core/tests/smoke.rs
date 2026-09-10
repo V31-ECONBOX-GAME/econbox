@@ -1,4 +1,4 @@
 #[test]
 fn crate_is_linkable() {
-    assert!(!econbox_core::VERSION.is_empty());
+    assert!(!entropybox_core::VERSION.is_empty());
 }

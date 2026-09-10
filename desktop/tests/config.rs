@@ -1,4 +1,4 @@
-use econbox::config::{
+use entropybox::config::{
     BASE_NAME, LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig, config_dir, load_from,
 };
 use std::path::Path;
@@ -24,7 +24,7 @@ fn config_dir_points_inside_desktop() {
 
 #[test]
 fn base_layer_supplies_every_field() {
-    assert_eq!(window("none").title, "econbox");
+    assert_eq!(window("none").title, "entropybox");
     assert_eq!(window("none").width, 1280);
     assert_eq!(window("none").height, 720);
     assert!(!window("none").fullscreen);
@@ -33,7 +33,7 @@ fn base_layer_supplies_every_field() {
 
 #[test]
 fn dev_overrides_only_what_it_declares() {
-    assert_eq!(window("dev").title, "econbox (dev)");
+    assert_eq!(window("dev").title, "entropybox (dev)");
     assert_eq!(window("dev").width, 1280);
     assert_eq!(log("dev").level, "debug");
     assert_eq!(log("dev").filter, "");
@@ -43,7 +43,7 @@ fn dev_overrides_only_what_it_declares() {
 fn release_and_test_are_quiet() {
     assert_eq!(log("release").level, "warn");
     assert_eq!(log("test").level, "error");
-    assert_eq!(window("release").title, "econbox");
+    assert_eq!(window("release").title, "entropybox");
 }
 
 #[test]

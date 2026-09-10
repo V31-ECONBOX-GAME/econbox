@@ -1,3 +1,3 @@
 fn main() {
-    econbox::app().run();
+    entropybox::app().run();
 }

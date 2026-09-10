@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 pub fn run(ticks: usize) -> App {
-    let mut app = econbox::headless_app();
+    let mut app = entropybox::headless_app();
 
     for _ in 0..ticks {
         app.update();

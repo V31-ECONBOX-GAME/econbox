@@ -5,22 +5,22 @@ edition.workspace = true
 publish.workspace = true
 
 [lib]
-name = "econbox"
+name = "entropybox"
 path = "src/lib.rs"
 
 [[bin]]
-name = "econbox"
+name = "entropybox"
 path = "src/main.rs"
 
 [dependencies]
 bevy = { workspace = true, features = ["2d", "ui", "audio"] }
 config_rs = { workspace = true }
 serde = { workspace = true }
-econbox_debug = { workspace = true, optional = true }
-econbox_simulation = { workspace = true }
+entropybox_debug = { workspace = true, optional = true }
+entropybox_simulation = { workspace = true }
 
 [features]
-dev = ["dep:econbox_debug"]
+dev = ["dep:entropybox_debug"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]
