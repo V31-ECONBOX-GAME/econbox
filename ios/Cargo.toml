@@ -2,7 +2,7 @@
 name = "ios"
 version.workspace = true
 edition.workspace = true
-publish = false
+publish.workspace = true
 
 [lib]
 name = "econbox_ios"
