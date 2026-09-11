@@ -1,25 +1,24 @@
-use desktop::config::{
-    BASE_NAME, LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig, config_dir, load_from,
-};
+use desktop::properties::{BASE_NAME, LOG_KEY, LogProperties, WINDOW_KEY, WindowProperties};
+use entropybox::config::{dir, load_from};
 use std::path::Path;
 
-fn window(profile: &str) -> WindowConfig {
-    load_from(&config_dir(), profile)
-        .expect("config loads")
+fn window(profile: &str) -> WindowProperties {
+    load_from(&dir(), BASE_NAME, profile)
+        .expect("properties load")
         .get(WINDOW_KEY)
         .expect("window section")
 }
 
-fn log(profile: &str) -> LogConfig {
-    load_from(&config_dir(), profile)
-        .expect("config loads")
+fn log(profile: &str) -> LogProperties {
+    load_from(&dir(), BASE_NAME, profile)
+        .expect("properties load")
         .get(LOG_KEY)
         .expect("log section")
 }
 
 #[test]
-fn config_dir_points_inside_desktop() {
-    assert!(config_dir().join("application.toml").exists());
+fn dir_points_inside_desktop() {
+    assert!(dir().join("application.toml").exists());
 }
 
 #[test]
@@ -48,25 +47,21 @@ fn release_and_test_are_quiet() {
 
 #[test]
 fn every_profile_layer_parses() {
-    assert!(config_dir().join(format!("{BASE_NAME}.toml")).exists());
+    assert!(dir().join(format!("{BASE_NAME}.toml")).exists());
     for profile in ["dev", "release", "test"] {
-        assert!(
-            config_dir()
-                .join(format!("{BASE_NAME}-{profile}.toml"))
-                .exists()
-        );
-        assert!(load_from(&config_dir(), profile).is_ok());
+        assert!(dir().join(format!("{BASE_NAME}-{profile}.toml")).exists());
+        assert!(load_from(&dir(), BASE_NAME, profile).is_ok());
     }
 }
 
 #[test]
 fn missing_base_layer_is_an_error() {
-    assert!(load_from(Path::new("/nonexistent"), "dev").is_err());
+    assert!(load_from(Path::new("/nonexistent"), BASE_NAME, "dev").is_err());
 }
 
 #[test]
 fn debug_section_is_owned_by_the_debug_module() {
-    let source = load_from(&config_dir(), "dev").expect("config loads");
+    let source = load_from(&dir(), BASE_NAME, "dev").expect("properties load");
     let overlay: bool = source.get("debug.overlay").expect("debug.overlay");
 
     assert!(overlay);

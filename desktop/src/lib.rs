@@ -1,19 +1,19 @@
-pub mod config;
+pub mod properties;
 
 use bevy::log::{Level, LogPlugin};
 use bevy::prelude::*;
 use bevy::window::{MonitorSelection, WindowMode};
-use config::{LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig};
-use config_rs::Config;
+use entropybox::config::Config;
 use entropybox_starter_simulation::SimulationStarter;
+use properties::{LOG_KEY, LogProperties, WINDOW_KEY, WindowProperties};
 
 pub fn app() -> App {
-    app_with(&config::load().expect("load config"))
+    app_with(&properties::load().expect("load properties"))
 }
 
 pub fn app_with(source: &Config) -> App {
-    let window: WindowConfig = source.get(WINDOW_KEY).unwrap_or_default();
-    let log: LogConfig = source.get(LOG_KEY).unwrap_or_default();
+    let window: WindowProperties = source.get(WINDOW_KEY).unwrap_or_default();
+    let log: LogProperties = source.get(LOG_KEY).unwrap_or_default();
 
     let mut app = App::new();
     app.add_plugins(
