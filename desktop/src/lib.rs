@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::window::{MonitorSelection, WindowMode};
 use config::{LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig};
 use config_rs::Config;
-use entropybox_simulation::SimulationStarter;
+use simulation::SimulationStarter;
 
 const PLAYER_SPEED: f32 = 300.0;
 
@@ -43,7 +43,7 @@ pub fn app_with(source: &Config) -> App {
 
     #[cfg(feature = "dev")]
     {
-        use entropybox_debug::{CONFIG_KEY, DebugConfig, DebugPlugin};
+        use debug::{CONFIG_KEY, DebugConfig, DebugPlugin};
         app.insert_resource(source.get::<DebugConfig>(CONFIG_KEY).unwrap_or_default())
             .add_plugins(DebugPlugin);
     }

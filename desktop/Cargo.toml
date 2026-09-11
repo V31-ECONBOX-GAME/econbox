@@ -4,10 +4,6 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
-[lib]
-name = "entropybox"
-path = "src/lib.rs"
-
 [[bin]]
 name = "entropybox"
 path = "src/main.rs"
@@ -16,11 +12,11 @@ path = "src/main.rs"
 bevy = { workspace = true, features = ["2d", "ui", "audio"] }
 config_rs = { workspace = true }
 serde = { workspace = true }
-entropybox_debug = { workspace = true, optional = true }
-entropybox_simulation = { workspace = true }
+debug = { workspace = true, optional = true }
+simulation = { workspace = true }
 
 [features]
-dev = ["dep:entropybox_debug"]
+dev = ["dep:debug"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]

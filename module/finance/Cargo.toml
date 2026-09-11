@@ -6,8 +6,8 @@ publish.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-entropybox_core = { workspace = true }
-entropybox_economy = { workspace = true }
+core = { workspace = true }
+economy = { workspace = true }
 
 [lints]
 workspace = true

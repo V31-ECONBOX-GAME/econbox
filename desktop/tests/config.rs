@@ -1,4 +1,4 @@
-use entropybox::config::{
+use desktop::config::{
     BASE_NAME, LOG_KEY, LogConfig, WINDOW_KEY, WindowConfig, config_dir, load_from,
 };
 use std::path::Path;

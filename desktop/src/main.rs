@@ -1,3 +1,3 @@
 fn main() {
-    entropybox::app().run();
+    desktop::app().run();
 }

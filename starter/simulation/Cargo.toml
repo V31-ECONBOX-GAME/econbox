@@ -6,12 +6,12 @@ publish.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-entropybox_world = { workspace = true }
-entropybox_population = { workspace = true }
-entropybox_society = { workspace = true }
-entropybox_economy = { workspace = true }
-entropybox_finance = { workspace = true }
-entropybox_politics = { workspace = true }
+world = { workspace = true }
+population = { workspace = true }
+society = { workspace = true }
+economy = { workspace = true }
+finance = { workspace = true }
+politics = { workspace = true }
 
 [lints]
 workspace = true

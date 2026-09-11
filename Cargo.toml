@@ -12,16 +12,16 @@ publish = false
 bevy = { version = "0.19.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }
-entropybox_core = { path = "library/core", package = "core" }
-entropybox_world = { path = "module/world", package = "world" }
-entropybox_population = { path = "module/population", package = "population" }
-entropybox_society = { path = "module/society", package = "society" }
-entropybox_economy = { path = "module/economy", package = "economy" }
-entropybox_finance = { path = "module/finance", package = "finance" }
-entropybox_politics = { path = "module/politics", package = "politics" }
-entropybox_debug = { path = "module/debug", package = "debug" }
-entropybox_simulation = { path = "starter/simulation", package = "simulation" }
-entropybox = { path = "desktop", package = "desktop" }
+core = { path = "library/core" }
+world = { path = "module/world" }
+population = { path = "module/population" }
+society = { path = "module/society" }
+economy = { path = "module/economy" }
+finance = { path = "module/finance" }
+politics = { path = "module/politics" }
+debug = { path = "module/debug" }
+simulation = { path = "starter/simulation" }
+desktop = { path = "desktop" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
