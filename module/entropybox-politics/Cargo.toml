@@ -1,0 +1,15 @@
+[package]
+name = "entropybox-politics"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+entropybox = { workspace = true }
+entropybox-society = { workspace = true }
+entropybox-economy = { workspace = true }
+entropybox-finance = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "entropybox-starter-simulation"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+entropybox-starter = { workspace = true }
+entropybox-world = { workspace = true }
+entropybox-population = { workspace = true }
+entropybox-society = { workspace = true }
+entropybox-economy = { workspace = true }
+entropybox-finance = { workspace = true }
+entropybox-politics = { workspace = true }
+
+[lints]
+workspace = true

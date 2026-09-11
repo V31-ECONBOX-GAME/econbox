@@ -1,6 +1,4 @@
 #[test]
-fn placeholder() {
-    let value = 1 + 1;
-
-    assert_eq!(value, 2);
+fn start_is_callable() {
+    ios::entropybox_start();
 }

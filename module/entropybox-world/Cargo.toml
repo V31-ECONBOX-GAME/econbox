@@ -1,13 +1,12 @@
 [package]
-name = "scenario"
+name = "entropybox-world"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
-[dev-dependencies]
+[dependencies]
 bevy = { workspace = true }
-desktop = { workspace = true }
-entropybox-world = { workspace = true }
+entropybox = { workspace = true }
 
 [lints]
 workspace = true

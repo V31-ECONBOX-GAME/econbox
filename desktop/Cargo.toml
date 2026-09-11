@@ -12,11 +12,11 @@ path = "src/main.rs"
 bevy = { workspace = true, features = ["2d", "ui", "audio"] }
 config_rs = { workspace = true }
 serde = { workspace = true }
-debug = { workspace = true, optional = true }
-simulation = { workspace = true }
+entropybox-debug = { workspace = true, optional = true }
+entropybox-starter-simulation = { workspace = true }
 
 [features]
-dev = ["dep:debug"]
+dev = ["dep:entropybox-debug"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]

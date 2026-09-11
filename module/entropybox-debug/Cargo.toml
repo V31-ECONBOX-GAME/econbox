@@ -1,0 +1,12 @@
+[package]
+name = "entropybox-debug"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy = { workspace = true, features = ["bevy_dev_tools", "ui"] }
+serde = { workspace = true }
+
+[lints]
+workspace = true

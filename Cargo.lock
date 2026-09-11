@@ -2071,10 +2071,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
-version = "0.2.0"
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2251,14 +2247,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
-name = "debug"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "serde",
-]
-
-[[package]]
 name = "derive_more"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2287,9 +2275,9 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "config",
- "debug",
+ "entropybox-debug",
+ "entropybox-starter-simulation",
  "serde",
- "simulation",
 ]
 
 [[package]]
@@ -2364,16 +2352,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
-name = "economy"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
- "population",
- "world",
-]
-
-[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2408,6 +2386,96 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "entropybox"
+version = "0.2.0"
+
+[[package]]
+name = "entropybox-debug"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "serde",
+]
+
+[[package]]
+name = "entropybox-economy"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+ "entropybox-population",
+ "entropybox-world",
+]
+
+[[package]]
+name = "entropybox-finance"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+ "entropybox-economy",
+]
+
+[[package]]
+name = "entropybox-politics"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+ "entropybox-economy",
+ "entropybox-finance",
+ "entropybox-society",
+]
+
+[[package]]
+name = "entropybox-population"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+ "entropybox-world",
+]
+
+[[package]]
+name = "entropybox-society"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+ "entropybox-population",
+]
+
+[[package]]
+name = "entropybox-starter"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
+]
+
+[[package]]
+name = "entropybox-starter-simulation"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox-economy",
+ "entropybox-finance",
+ "entropybox-politics",
+ "entropybox-population",
+ "entropybox-society",
+ "entropybox-starter",
+ "entropybox-world",
+]
+
+[[package]]
+name = "entropybox-world"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "entropybox",
 ]
 
 [[package]]
@@ -2485,15 +2553,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
-]
-
-[[package]]
-name = "finance"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
- "economy",
 ]
 
 [[package]]
@@ -4161,17 +4220,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "politics"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
- "economy",
- "finance",
- "society",
-]
-
-[[package]]
 name = "polling"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4183,15 +4231,6 @@ dependencies = [
  "pin-project-lite",
  "rustix 1.1.4",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "population"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
- "world",
 ]
 
 [[package]]
@@ -4530,12 +4569,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "desktop",
- "economy",
- "finance",
- "politics",
- "population",
- "society",
- "world",
+ "entropybox-world",
 ]
 
 [[package]]
@@ -4652,19 +4686,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
-name = "simulation"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "economy",
- "finance",
- "politics",
- "population",
- "society",
- "world",
-]
-
-[[package]]
 name = "skrifa"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4737,15 +4758,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "society"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
- "population",
 ]
 
 [[package]]
@@ -6057,14 +6069,6 @@ dependencies = [
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
-]
-
-[[package]]
-name = "world"
-version = "0.2.0"
-dependencies = [
- "bevy",
- "core",
 ]
 
 [[package]]

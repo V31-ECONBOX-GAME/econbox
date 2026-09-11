@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["library/*", "module/*", "starter/*", "desktop", "ios", "integration-test/*", "buildsrc"]
+members = ["core/*", "module/*", "starter/*", "desktop", "ios", "integration-test/*", "buildsrc"]
 default-members = ["desktop"]
 
 [workspace.package]
@@ -12,15 +12,16 @@ publish = false
 bevy = { version = "0.19.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }
-core = { path = "library/core" }
-world = { path = "module/world" }
-population = { path = "module/population" }
-society = { path = "module/society" }
-economy = { path = "module/economy" }
-finance = { path = "module/finance" }
-politics = { path = "module/politics" }
-debug = { path = "module/debug" }
-simulation = { path = "starter/simulation" }
+entropybox = { path = "core/entropybox" }
+entropybox-world = { path = "module/entropybox-world" }
+entropybox-population = { path = "module/entropybox-population" }
+entropybox-society = { path = "module/entropybox-society" }
+entropybox-economy = { path = "module/entropybox-economy" }
+entropybox-finance = { path = "module/entropybox-finance" }
+entropybox-politics = { path = "module/entropybox-politics" }
+entropybox-debug = { path = "module/entropybox-debug" }
+entropybox-starter = { path = "starter/entropybox-starter" }
+entropybox-starter-simulation = { path = "starter/entropybox-starter-simulation" }
 desktop = { path = "desktop" }
 
 [workspace.lints.clippy]
