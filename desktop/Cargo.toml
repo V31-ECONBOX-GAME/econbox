@@ -11,12 +11,11 @@ path = "src/main.rs"
 [dependencies]
 bevy = { workspace = true }
 serde = { workspace = true }
-entropybox-debug = { workspace = true, optional = true }
 entropybox-starter-simulation = { workspace = true }
 
 [features]
 default = ["dev"]
-dev = ["dep:entropybox-debug"]
+dev = ["bevy/bevy_dev_tools"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]

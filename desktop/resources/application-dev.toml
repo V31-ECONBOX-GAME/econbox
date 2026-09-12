@@ -1,9 +1,6 @@
-[window]
-title = "entropybox (dev)"
+[application]
+name = "entropybox"
 
-[log]
-level = "debug"
-
-[debug]
-overlay = true
-inspector = true
+[logging.level]
+root = "debug"
+entropybox = "trace"

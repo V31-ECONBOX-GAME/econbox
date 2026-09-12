@@ -1,25 +1,23 @@
 use bevy::prelude::*;
 use entropybox_starter_simulation::entropybox::config::{Config, ConfigError};
 use serde::Deserialize;
+use std::collections::BTreeMap;
 
 pub const BASE_NAME: &str = "application";
-pub const WINDOW_KEY: &str = "window";
-pub const LOG_KEY: &str = "log";
+pub const APPLICATION_KEY: &str = "application";
+pub const LOGGING_KEY: &str = "logging";
+pub const ROOT_LOGGER: &str = "root";
 
 #[derive(Resource, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(default, deny_unknown_fields)]
-pub struct WindowProperties {
-    pub title: String,
-    pub width: u32,
-    pub height: u32,
-    pub fullscreen: bool,
+pub struct ApplicationProperties {
+    pub name: String,
 }
 
 #[derive(Resource, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(default, deny_unknown_fields)]
-pub struct LogProperties {
-    pub level: String,
-    pub filter: String,
+pub struct LoggingProperties {
+    pub level: BTreeMap<String, String>,
 }
 
 pub fn load() -> Result<Config, ConfigError> {

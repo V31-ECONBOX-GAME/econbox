@@ -19,7 +19,6 @@ entropybox-society = { path = "module/entropybox-society" }
 entropybox-economy = { path = "module/entropybox-economy" }
 entropybox-finance = { path = "module/entropybox-finance" }
 entropybox-politics = { path = "module/entropybox-politics" }
-entropybox-debug = { path = "module/entropybox-debug" }
 entropybox-starter = { path = "starter/entropybox-starter" }
 entropybox-starter-simulation = { path = "starter/entropybox-starter-simulation" }
 desktop = { path = "desktop" }

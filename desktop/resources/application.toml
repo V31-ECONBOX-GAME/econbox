@@ -1,13 +1,5 @@
-[window]
-title = "entropybox"
-width = 1280
-height = 720
-fullscreen = false
+[application]
+name = "entropybox"
 
-[log]
-level = "info"
-filter = ""
-
-[debug]
-overlay = false
-inspector = false
+[logging.level]
+root = "info"

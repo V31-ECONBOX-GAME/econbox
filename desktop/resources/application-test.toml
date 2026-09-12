@@ -1,5 +1,5 @@
-[window]
-title = "entropybox (test)"
+[application]
+name = "entropybox"
 
-[log]
-level = "error"
+[logging.level]
+root = "error"

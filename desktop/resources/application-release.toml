@@ -1,2 +1,5 @@
-[log]
-level = "warn"
+[application]
+name = "entropybox"
+
+[logging.level]
+root = "warn"
