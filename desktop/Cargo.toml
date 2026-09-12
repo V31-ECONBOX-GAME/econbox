@@ -16,6 +16,7 @@ entropybox-debug = { workspace = true, optional = true }
 entropybox-starter-simulation = { workspace = true }
 
 [features]
+default = ["dev"]
 dev = ["dep:entropybox-debug"]
 fast-link = ["bevy/dynamic_linking"]
 

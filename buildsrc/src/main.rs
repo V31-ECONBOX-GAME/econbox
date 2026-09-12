@@ -48,7 +48,13 @@ fn dist() -> Result<()> {
     let resources = root.join("desktop/resources");
     let assets = root.join("assets");
 
-    cargo(&["build", "--release", "--package", "desktop"])?;
+    cargo(&[
+        "build",
+        "--release",
+        "--no-default-features",
+        "--package",
+        "desktop",
+    ])?;
 
     let binary = root.join("target/release/entropybox");
     reject_dynamic_linking(&binary)?;
