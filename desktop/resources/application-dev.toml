@@ -3,4 +3,3 @@ name = "entropybox"
 
 [logging.level]
 root = "debug"
-entropybox = "trace"

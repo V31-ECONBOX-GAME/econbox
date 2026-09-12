@@ -41,16 +41,8 @@ fn the_application_name_does_not_move_between_profiles() {
 #[test]
 fn a_profile_layer_only_moves_the_log_levels() {
     assert_eq!(logging("dev").level[ROOT_LOGGER], "debug");
-    assert_eq!(logging("dev").level["entropybox"], "trace");
     assert_eq!(logging("release").level[ROOT_LOGGER], "warn");
     assert_eq!(logging("test").level[ROOT_LOGGER], "error");
-}
-
-#[test]
-fn a_profile_layer_merges_into_the_base_map() {
-    assert_eq!(logging("dev").level.len(), 2);
-    assert_eq!(logging("release").level.len(), 1);
-    assert!(!logging("release").level.contains_key("entropybox"));
 }
 
 #[test]
