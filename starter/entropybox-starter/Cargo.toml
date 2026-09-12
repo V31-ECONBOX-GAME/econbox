@@ -5,7 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-bevy = { workspace = true }
+bevy = { workspace = true, features = ["2d", "ui", "audio"] }
 entropybox = { workspace = true }
 
 [lints]

@@ -2274,7 +2274,6 @@ name = "desktop"
 version = "0.2.0"
 dependencies = [
  "bevy",
- "entropybox",
  "entropybox-debug",
  "entropybox-starter-simulation",
  "serde",

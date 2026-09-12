@@ -1,5 +1,5 @@
 use desktop::properties::{BASE_NAME, LOG_KEY, LogProperties, WINDOW_KEY, WindowProperties};
-use entropybox::config::{dir, load_from};
+use entropybox_starter_simulation::entropybox::config::{dir, load_from};
 use std::path::Path;
 
 fn window(profile: &str) -> WindowProperties {

@@ -9,8 +9,7 @@ name = "entropybox"
 path = "src/main.rs"
 
 [dependencies]
-bevy = { workspace = true, features = ["2d", "ui", "audio"] }
-entropybox = { workspace = true }
+bevy = { workspace = true }
 serde = { workspace = true }
 entropybox-debug = { workspace = true, optional = true }
 entropybox-starter-simulation = { workspace = true }

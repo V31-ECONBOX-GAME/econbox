@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use entropybox::config::{Config, ConfigError};
+use entropybox_starter_simulation::entropybox::config::{Config, ConfigError};
 use serde::Deserialize;
 
 pub const BASE_NAME: &str = "application";
@@ -23,5 +23,5 @@ pub struct LogProperties {
 }
 
 pub fn load() -> Result<Config, ConfigError> {
-    entropybox::config::load(BASE_NAME)
+    entropybox_starter_simulation::entropybox::config::load(BASE_NAME)
 }

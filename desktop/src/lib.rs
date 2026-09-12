@@ -1,10 +1,8 @@
 pub mod properties;
 
 use bevy::log::{Level, LogPlugin};
-use bevy::prelude::*;
 use bevy::window::{MonitorSelection, WindowMode};
-use entropybox::config::Config;
-use entropybox_starter_simulation::SimulationStarter;
+use entropybox_starter_simulation::prelude::*;
 use properties::{LOG_KEY, LogProperties, WINDOW_KEY, WindowProperties};
 
 pub fn app() -> App {

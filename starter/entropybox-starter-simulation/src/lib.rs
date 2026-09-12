@@ -1,3 +1,5 @@
+pub use entropybox_starter::{bevy, entropybox};
+
 use bevy::app::{PluginGroup, PluginGroupBuilder};
 use entropybox_economy::EconomyPlugin;
 use entropybox_finance::FinancePlugin;
@@ -18,4 +20,9 @@ impl PluginGroup for SimulationStarter {
             .add(FinancePlugin)
             .add(PoliticsPlugin)
     }
+}
+
+pub mod prelude {
+    pub use crate::SimulationStarter;
+    pub use entropybox_starter::prelude::*;
 }
