@@ -9,7 +9,7 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
-bevy = { version = "0.19.1", default-features = false }
+bevy = { version = "0.20.0", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }

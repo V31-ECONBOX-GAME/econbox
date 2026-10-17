@@ -193,6 +193,8 @@ pub(super) fn cap_slice() -> NodeImageMode {
 pub(super) fn socket(chrome: &Chrome, display: Display) -> impl Bundle {
     (
         Button,
+        ActivateOnPress,
+        PointerHovered::default(),
         Node {
             width: Val::Px(SLOT_SIZE),
             height: Val::Px(SLOT_SIZE),

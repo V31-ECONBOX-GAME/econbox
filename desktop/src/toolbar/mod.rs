@@ -12,6 +12,7 @@ pub struct ToolbarPlugin;
 impl Plugin for ToolbarPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ActiveTab>()
+            .add_observer(input::press)
             .add_systems(Startup, (chrome::forge, layout::spawn).chain())
             .add_systems(
                 Update,
@@ -19,7 +20,6 @@ impl Plugin for ToolbarPlugin {
                     layout::dress,
                     paint::swap,
                     input::over_ui,
-                    input::press,
                     input::shortcuts,
                     paint::show,
                     (

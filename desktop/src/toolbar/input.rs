@@ -16,45 +16,36 @@ pub(super) fn over_ui(
 }
 
 pub(super) fn press(
-    slots: Query<
-        (
-            &Interaction,
-            Option<&ToolSlot>,
-            Option<&TabSlot>,
-            Option<&ActionSlot>,
-        ),
-        Changed<Interaction>,
-    >,
+    activate: On<Activate>,
+    slots: Query<(Option<&ToolSlot>, Option<&TabSlot>, Option<&ActionSlot>)>,
     mut brush: ResMut<Brush>,
     mut tab: ResMut<ActiveTab>,
     mut clock: ResMut<WorldClock>,
     mut undo: MessageWriter<Undo>,
 ) {
-    for (interaction, tool, chosen, action) in &slots {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
+    let Ok((tool, chosen, action)) = slots.get(activate.entity) else {
+        return;
+    };
 
-        if let Some(tool) = tool {
-            brush.tool = tool.0;
-        }
+    if let Some(tool) = tool {
+        brush.tool = tool.0;
+    }
 
-        if let Some(chosen) = chosen {
-            tab.0 = chosen.0;
-        }
+    if let Some(chosen) = chosen {
+        tab.0 = chosen.0;
+    }
 
-        if let Some(action) = action {
-            match action.0 {
-                Action::Undo => {
-                    undo.write(Undo);
-                }
-                Action::Play => clock.toggle(),
-                Action::Speed => clock.faster(),
-                Action::Shape => brush.shape = brush.shape.flipped(),
-                Action::Shrink => brush.shrink(),
-                Action::Grow => brush.grow(),
-                Action::Flood => brush.flood = !brush.flood,
+    if let Some(action) = action {
+        match action.0 {
+            Action::Undo => {
+                undo.write(Undo);
             }
+            Action::Play => clock.toggle(),
+            Action::Speed => clock.faster(),
+            Action::Shape => brush.shape = brush.shape.flipped(),
+            Action::Shrink => brush.shrink(),
+            Action::Grow => brush.grow(),
+            Action::Flood => brush.flood = !brush.flood,
         }
     }
 }

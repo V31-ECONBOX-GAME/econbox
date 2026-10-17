@@ -83,6 +83,8 @@ pub(super) fn spawn(mut commands: Commands, chrome: Option<Res<Chrome>>) {
                             tabs.spawn((
                                 TabSlot(tab),
                                 Button,
+                                ActivateOnPress,
+                                PointerHovered::default(),
                                 Node {
                                     width: Val::Px(56.0),
                                     height: Val::Px(36.0),
@@ -120,6 +122,8 @@ pub(super) fn spawn(mut commands: Commands, chrome: Option<Res<Chrome>>) {
                     .spawn((
                         ActionSlot(Action::Undo),
                         Button,
+                        ActivateOnPress,
+                        PointerHovered::default(),
                         Node {
                             width: Val::Px(40.0),
                             height: Val::Px(STACK),

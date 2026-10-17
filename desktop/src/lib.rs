@@ -30,22 +30,25 @@ pub fn app_with(source: &Config) -> App {
         source.get(properties::APPLICATION).unwrap_or_default();
     let logging: LoggingProperties = source.get(properties::LOGGING).unwrap_or_default();
 
+    let plugins = DefaultPlugins
+        .set(windows::plugin(application))
+        .set(logs::plugin(&logging));
+
+    #[cfg(feature = "dev")]
+    let plugins = plugins.disable::<bevy::dev_tools::render_debug::RenderDebugOverlayPlugin>();
+
     let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins
-            .set(windows::plugin(application))
-            .set(logs::plugin(&logging)),
-    )
-    .insert_resource(ClearColor(ocean()))
-    .add_plugins((
-        CameraPlugin,
-        ClockPlugin,
-        TileViewPlugin,
-        CursorPlugin,
-        CreaturePlugin,
-        BrushPlugin,
-    ))
-    .add_plugins((HudPlugin, ToolbarPlugin));
+    app.add_plugins(plugins)
+        .insert_resource(ClearColor(ocean()))
+        .add_plugins((
+            CameraPlugin,
+            ClockPlugin,
+            TileViewPlugin,
+            CursorPlugin,
+            CreaturePlugin,
+            BrushPlugin,
+        ))
+        .add_plugins((HudPlugin, ToolbarPlugin));
 
     #[cfg(feature = "dev")]
     {
@@ -57,10 +60,14 @@ pub fn app_with(source: &Config) -> App {
 }
 
 #[cfg(feature = "dev")]
-fn snapshot(mut commands: Commands, time: Res<Time>, mut taken: Local<bool>) {
+fn snapshot(
+    mut commands: Commands,
+    frames: Res<bevy::diagnostic::FrameCount>,
+    mut taken: Local<bool>,
+) {
     use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 
-    if *taken || time.elapsed_secs() < 2.0 {
+    if *taken || frames.0 < 120 {
         return;
     }
 

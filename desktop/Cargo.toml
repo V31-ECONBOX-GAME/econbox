@@ -24,7 +24,7 @@ econbox-tileview = { workspace = true }
 
 [features]
 default = ["dev"]
-dev = ["bevy/bevy_dev_tools"]
+dev = ["bevy/bevy_dev_tools", "bevy/render_dev_tools"]
 fast-link = ["bevy/dynamic_linking"]
 
 [lints]

@@ -42,20 +42,21 @@ pub(super) fn show(tab: Res<ActiveTab>, mut groups: Query<(&GroupBox, &mut Node)
     }
 }
 
-fn edge(active: bool, interaction: Interaction) -> Color {
-    match (active, interaction) {
+fn edge(active: bool, lit: bool) -> Color {
+    match (active, lit) {
         (true, _) => EDGE_ON,
-        (false, Interaction::None) => CLEAR,
-        (false, _) => EDGE_LIT,
+        (false, false) => CLEAR,
+        (false, true) => EDGE_LIT,
     }
 }
 
 pub(super) fn mark_tools(
     brush: Res<Brush>,
-    mut slots: Query<(&ToolSlot, &Interaction, &mut BorderColor)>,
+    mut slots: Query<(&ToolSlot, &PointerHovered, Has<Pressed>, &mut BorderColor)>,
 ) {
-    for (slot, interaction, mut border) in &mut slots {
-        *border = BorderColor::all(edge(slot.0 == brush.tool, *interaction));
+    for (slot, hovered, pressed, mut border) in &mut slots {
+        let lit = hovered.get() || pressed;
+        border.set_if_neq(BorderColor::all(edge(slot.0 == brush.tool, lit)));
     }
 }
 
@@ -82,9 +83,9 @@ pub(super) fn mark_tabs(
 pub(super) fn mark_actions(
     brush: Res<Brush>,
     clock: Res<WorldClock>,
-    mut slots: Query<(&ActionSlot, &Interaction, &mut BorderColor)>,
+    mut slots: Query<(&ActionSlot, &PointerHovered, Has<Pressed>, &mut BorderColor)>,
 ) {
-    for (slot, interaction, mut border) in &mut slots {
+    for (slot, hovered, pressed, mut border) in &mut slots {
         let active = match slot.0 {
             Action::Flood => brush.flood,
             Action::Shape => brush.shape == Shape::Square,
@@ -92,7 +93,7 @@ pub(super) fn mark_actions(
             _ => false,
         };
 
-        *border = BorderColor::all(edge(active, *interaction));
+        border.set_if_neq(BorderColor::all(edge(active, hovered.get() || pressed)));
     }
 }
 
