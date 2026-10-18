@@ -40,6 +40,10 @@ impl Ground {
         !self.is_water()
     }
 
+    pub fn is_lava(self) -> bool {
+        matches!(self, Self::Lava2 | Self::Lava3)
+    }
+
     pub fn takes_overlay(self) -> bool {
         matches!(self, Self::Sand | Self::SoilLow | Self::SoilHigh)
     }
@@ -182,6 +186,10 @@ impl Tile {
 
     pub fn is_land(self) -> bool {
         self.ground.is_land()
+    }
+
+    pub fn is_lava(self) -> bool {
+        self.ground.is_lava()
     }
 
     pub fn fertility(self) -> f32 {
@@ -411,6 +419,18 @@ mod tests {
         shades.dedup();
 
         assert!(shades.len() > 12, "only {} shades", shades.len());
+    }
+
+    #[test]
+    fn only_the_two_lava_grounds_burn() {
+        let burning: Vec<Ground> = GROUNDS
+            .into_iter()
+            .filter(|ground| ground.is_lava())
+            .collect();
+
+        assert_eq!(burning, [Ground::Lava2, Ground::Lava3]);
+        assert!(Tile::bare(Ground::Lava3).is_lava());
+        assert!(!Tile::bare(Ground::Hills).is_lava());
     }
 
     #[test]

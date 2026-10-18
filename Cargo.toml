@@ -25,6 +25,7 @@ econbox-noise = { path = "module/econbox-noise" }
 econbox-tile = { path = "module/econbox-tile" }
 econbox-tilemap = { path = "module/econbox-tilemap" }
 econbox-tileview = { path = "module/econbox-tileview" }
+econbox-toolbar = { path = "module/econbox-toolbar" }
 econbox-worldgen = { path = "module/econbox-worldgen" }
 desktop = { path = "desktop" }
 

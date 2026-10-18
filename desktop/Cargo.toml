@@ -21,6 +21,7 @@ econbox-cursor = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 econbox-tileview = { workspace = true }
+econbox-toolbar = { workspace = true }
 
 [features]
 default = ["dev"]

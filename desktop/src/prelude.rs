@@ -9,7 +9,7 @@ pub use bevy::ui_widgets::{Activate, ActivateOnPress, Button};
 pub use econbox::config::{Config, ConfigError};
 
 pub use econbox_art::{self as art, Icon, SPRITE, atlas, chrome, icon};
-pub use econbox_brush::{Brush, PointerOverUi, Shape, Tool, Undo, UndoStack};
+pub use econbox_brush::{Brush, PointerOverUi, Power, Shape, Tool, Undo, UndoStack};
 pub use econbox_camera::MapView;
 pub use econbox_clock::WorldClock;
 pub use econbox_creature::{Census, CreatureArt, Kind, SPECIES, Species};

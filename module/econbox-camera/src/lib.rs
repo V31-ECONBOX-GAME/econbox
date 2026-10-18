@@ -58,6 +58,9 @@ impl Default for CameraConfig {
     }
 }
 
+#[derive(Resource, Debug, Clone, Copy, Default)]
+pub struct PointerOverUi(pub bool);
+
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Panning {
     pub with_left: bool,
@@ -106,6 +109,7 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CameraConfig>()
             .init_resource::<Panning>()
+            .init_resource::<PointerOverUi>()
             .init_resource::<WorldBounds>()
             .init_resource::<Zoom>()
             .init_resource::<MapView>()
@@ -128,8 +132,14 @@ fn spawn(mut commands: Commands, zoom: Res<Zoom>) {
     ));
 }
 
-fn aim(scroll: Res<AccumulatedMouseScroll>, config: Res<CameraConfig>, mut zoom: ResMut<Zoom>) {
-    if scroll.delta.y == 0.0 {
+fn aim(
+    scroll: Res<AccumulatedMouseScroll>,
+    config: Res<CameraConfig>,
+    keys: Res<ButtonInput<KeyCode>>,
+    over_ui: Res<PointerOverUi>,
+    mut zoom: ResMut<Zoom>,
+) {
+    if scroll.delta.y == 0.0 || over_ui.0 || modified(&keys) {
         return;
     }
 
@@ -163,8 +173,10 @@ fn pan(
     motion: Res<AccumulatedMouseMotion>,
     panning: Res<Panning>,
     config: Res<CameraConfig>,
+    over_ui: Res<PointerOverUi>,
     windows: Query<&Window>,
     time: Res<Time>,
+    mut grabbed: Local<bool>,
 ) {
     let Some(camera) = camera else { return };
     let (mut transform, projection) = camera.into_inner();
@@ -174,7 +186,15 @@ fn pan(
 
     let visible = projection.area.size();
 
-    if panning.dragging(&buttons)
+    if buttons.any_just_pressed([MouseButton::Left, MouseButton::Right]) {
+        *grabbed = !over_ui.0;
+    }
+
+    if !panning.dragging(&buttons) {
+        *grabbed = false;
+    }
+
+    if *grabbed
         && motion.delta != Vec2::ZERO
         && let Ok(window) = windows.single()
     {
@@ -184,12 +204,27 @@ fn pan(
         transform.translation.y += motion.delta.y * per_pixel.y;
     }
 
-    let axis = keyboard_axis(&keys);
+    let axis = if modified(&keys) {
+        Vec2::ZERO
+    } else {
+        keyboard_axis(&keys)
+    };
     if axis != Vec2::ZERO {
         let step = axis * visible * config.keyboard_speed * time.delta_secs() * 0.5;
         transform.translation.x += step.x;
         transform.translation.y += step.y;
     }
+}
+
+pub fn modified(keys: &ButtonInput<KeyCode>) -> bool {
+    keys.any_pressed([
+        KeyCode::AltLeft,
+        KeyCode::AltRight,
+        KeyCode::ControlLeft,
+        KeyCode::ControlRight,
+        KeyCode::SuperLeft,
+        KeyCode::SuperRight,
+    ])
 }
 
 pub fn keyboard_axis(keys: &ButtonInput<KeyCode>) -> Vec2 {

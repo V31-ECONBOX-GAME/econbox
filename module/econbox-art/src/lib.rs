@@ -1,5 +1,10 @@
 //! Original pixel sprites, drawn from a handful of stance templates and a per creature palette.
 
+pub mod glyph;
+pub mod ui;
+
+pub use glyph::{GLYPHS, Glyph, glyph};
+
 pub const SPRITE: usize = 16;
 pub const PIXELS: usize = SPRITE * SPRITE;
 
@@ -366,31 +371,6 @@ pub const RAIL_PIECE: [&str; 24] = [
     "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
 ];
 
-pub const TAB_PIECE: [&str; 22] = [
-    "........EEEEEEEEEE........",
-    ".......EHHHHHHHHDDE.......",
-    "......EHHLLLLLLLLDDE......",
-    ".....EHHLMMMMMMMMLDDE.....",
-    "....EHHLMMMMMMMMMMLDDE....",
-    "...EHHLMBBMMMMMMBBMLDDE...",
-    "..EHHLMMDMMMMMMMMDMMLDDE..",
-    ".EHHLMMMMMMMMMMMMMMMMLDDE.",
-    "EHHLMMMMMMMMMMMMMMMMMMLDDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMMMMMMMLDE",
-    "MMMMMMMMMMMMMMMMMMMMMMMMMM",
-    "MMMMMMMMMMMMMMMMMMMMMMMMMM",
-    "MMMMMMMMMMMMMMMMMMMMMMMMMM",
-];
-
 pub const CAP_PIECE: [&str; 24] = [
     "EEEEEEEEEEEEEE",
     "EHHHHHHHHHHHDE",
@@ -418,55 +398,215 @@ pub const CAP_PIECE: [&str; 24] = [
     "EEEEEEEEEEEEEE",
 ];
 
-pub const DIVIDER_PIECE: [&str; 24] = [
-    "EEEEEEEEEEEEEE",
-    "EHHHHHHHHHHHDE",
-    "EHLLLLLLLLLLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLBBMMMMBBLDE",
-    "EHLMDMMMMDMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLLLLLLLLLLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLLLLLLLLLLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLBBMMMMBBLDE",
-    "EHLMDMMMMDMLDE",
-    "EHLMMMMMMMMLDE",
-    "EHLLLLLLLLLLDE",
-    "EHDDDDDDDDDDDE",
-    "EEEEEEEEEEEEEE",
+pub const KEY_PIECE: [&str; 24] = [
+    "..OOOOOOOOOOOOOOOOOOOO..",
+    ".ORRRRRRRRRRRRRRRRRRRRO.",
+    "ORSSSSSSSSSSSSSSSSSSSSRO",
+    "ORSHHHHHHHHHHHHHHHHHHSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFKKKFFFSRO",
+    "ORSHFFFFFFFFFFFFFKKFFSRO",
+    "ORSHFFFFFFFFFFFFFFFKFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFKKFFFFFFFFFFFFFFSRO",
+    "ORSHFFFKFFFFFFFFFFFFFSRO",
+    "ORSHFFFFKKKFFFFFFFFFFSRO",
+    "ORSHFFFFFFFKFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFKKFFFFFSRO",
+    "ORSHFFFFFFFFFFFFKKFFFSRO",
+    "ORSHFFKFFFFFFFFFFFFFFSRO",
+    "ORSHFFFFFFFFFFFFFFFFFSRO",
+    "ORSSSSSSSSSSSSSSSSSSSSRO",
+    ".ORRRRRRRRRRRRRRRRRRRRO.",
+    "..OOOOOOOOOOOOOOOOOOOO..",
 ];
 
-pub const SLOT_PIECE: [&str; 20] = [
-    "EEEEEEEEEEEEEEEEEEEE",
-    "EHHHHHHHHHHHHHHHHHDE",
-    "EHBLLLLLLLLLLLLLLBDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHLMMMMMMMMMMMMMMLDE",
-    "EHBMMMMMMMMMMMMMMBDE",
-    "EHDDDDDDDDDDDDDDDDDE",
-    "EEEEEEEEEEEEEEEEEEEE",
+pub const LED_PIECE: [&str; 6] = ["..OO..", ".OHGO.", "OHGGGO", "OGGGDO", ".OGDO.", "..OO.."];
+
+pub const DOT_PIECE: [&str; 5] = [".OOO.", "OFFFO", "OFFFO", "OFFFO", ".OOO."];
+
+pub const PLUG_PIECE: [&str; 50] = [
+    "..OOOOOOOOOOOOOOOOOOOOOO..",
+    ".OHHHHHHHHHHHHHHHHHHHHHHO.",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHUUUUUUUUUUUUUUUUUUUUUUDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "OHWWWWWWWWWWWWWWWWWWWWWWDO",
+    "ODDDDDDDDDDDDDDDDDDDDDDDDO",
+    ".ODDDDDDDDDDDDDDDDDDDDDDO.",
+    "..OOOOOOOOOOOOOOOOOOOOOO..",
 ];
+
+pub const FLAG_PIECE: [&str; 22] = [
+    "........OOOOOOOOOOOOOOOOOOOOOOOO........",
+    ".......OHHHHHHHHHHHHHHHHHHHHHHHHO.......",
+    "......OHFFFFFFFFFFFFFFFFFFFFFFFFDO......",
+    ".....OHFFFFFFFFFFFFFFFFFFFFFFFFFFDO.....",
+    "....OHFFFFPPPFFFFFFFFFFFFFFPPPFFFFDO....",
+    "...OHFFFFFFFPFFFFFFFFFFFFFFPFFFFFFFDO...",
+    "..OHFFFFFFPPPFFFFFFFFFFFFFFPPPFFFFFFDO..",
+    ".OHFFFFFFFPFFFFFFFFFFFFFFFFFFPFFFFFFFDO.",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "OHFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDO",
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+];
+
+pub const GROOVE_PIECE: [&str; 20] = [
+    "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.",
+    "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.", "ODL.",
+];
+
+pub type Palette = &'static [(char, [u8; 3])];
+
+pub const KEY_REST: Palette = &[
+    ('O', [0x16, 0x17, 0x16]),
+    ('R', [0x7c, 0x75, 0x65]),
+    ('S', [0x1d, 0x1f, 0x1e]),
+    ('H', [0x2e, 0x31, 0x2f]),
+    ('F', [0x25, 0x27, 0x26]),
+    ('K', [0x33, 0x36, 0x34]),
+];
+
+pub const KEY_LIT: Palette = &[
+    ('O', [0x16, 0x17, 0x16]),
+    ('R', [0xb4, 0xae, 0x98]),
+    ('S', [0x26, 0x28, 0x27]),
+    ('H', [0x3a, 0x3d, 0x3a]),
+    ('F', [0x30, 0x33, 0x31]),
+    ('K', [0x3e, 0x42, 0x3f]),
+];
+
+pub const KEY_ON: Palette = &[
+    ('O', [0x5a, 0x10, 0x12]),
+    ('R', [0xe0, 0x46, 0x32]),
+    ('S', [0xc0, 0x2c, 0x2a]),
+    ('H', [0x7c, 0x58, 0x58]),
+    ('F', [0x69, 0x49, 0x4b]),
+    ('K', [0x74, 0x52, 0x53]),
+];
+
+pub const LED_LIT: Palette = &[
+    ('O', [0x0e, 0x3a, 0x12]),
+    ('G', [0x45, 0xd4, 0x45]),
+    ('H', [0xe8, 0xff, 0xe0]),
+    ('D', [0x22, 0x8c, 0x2a]),
+];
+
+pub const DOT_OFF: Palette = &[('O', [0x1a, 0x1b, 0x1a]), ('F', [0x2c, 0x2e, 0x2c])];
+
+pub const DOT_ON: Palette = &[('O', [0x5a, 0x44, 0x10]), ('F', [0xf0, 0xb4, 0x3a])];
+
+pub const PLUG_RED: Palette = &[
+    ('O', [0x7a, 0x1c, 0x16]),
+    ('H', [0xf6, 0x8a, 0x72]),
+    ('U', [0xe6, 0x53, 0x40]),
+    ('W', [0xdc, 0x46, 0x36]),
+    ('D', [0xb0, 0x30, 0x26]),
+];
+
+pub const FLAG_REST: Palette = &[
+    ('O', [0x2c, 0x31, 0x29]),
+    ('H', [0x6a, 0x72, 0x62]),
+    ('F', [0x4f, 0x56, 0x49]),
+    ('D', [0x3c, 0x42, 0x37]),
+    ('P', [0x4a, 0x51, 0x44]),
+];
+
+pub const FLAG_ON: Palette = &[
+    ('O', [0x6a, 0x16, 0x12]),
+    ('H', [0xf0, 0x7c, 0x68]),
+    ('F', [0xd8, 0x40, 0x30]),
+    ('D', [0xa8, 0x2c, 0x22]),
+    ('P', [0xce, 0x3b, 0x2c]),
+];
+
+pub const GROOVE_TONE: Palette = &[
+    ('O', [0x2e, 0x32, 0x2a]),
+    ('D', [0x26, 0x29, 0x23]),
+    ('L', [0x5c, 0x63, 0x55]),
+];
+
+pub const TAB_INK: [u8; 3] = [0xf4, 0xf2, 0xea];
+
+pub fn paint(rows: &[&str], palette: Palette) -> (Vec<u8>, u32, u32) {
+    let width = rows.first().map_or(0, |row| row.chars().count()) as u32;
+    let height = rows.len() as u32;
+    let mut data = Vec::with_capacity((width * height) as usize * 4);
+
+    for row in rows {
+        for glyph in row.chars() {
+            match palette.iter().find(|(key, _)| *key == glyph) {
+                Some((_, color)) => data.extend_from_slice(&opaque(*color)),
+                None => data.extend_from_slice(&CLEAR),
+            }
+        }
+    }
+
+    (data, width, height)
+}
+
+pub fn silhouette(frame: &[[u8; 4]], tone: [u8; 3]) -> Vec<[u8; 4]> {
+    frame
+        .iter()
+        .map(|pixel| if pixel[3] == 0 { CLEAR } else { opaque(tone) })
+        .collect()
+}
 
 pub const BRASS: [u8; 3] = [0xe2, 0xaf, 0x52];
 
@@ -477,23 +617,8 @@ pub struct Metal {
 }
 
 pub const FRAME: Metal = Metal {
-    face: [0x6c, 0x78, 0x56],
-    stud: BRASS,
-};
-
-pub const SOCKET: Metal = Metal {
-    face: [0x4e, 0x55, 0x46],
-    stud: BRASS,
-};
-
-pub const LEAF: Metal = Metal {
-    face: [0x7a, 0x86, 0x60],
-    stud: BRASS,
-};
-
-pub const EMBER: Metal = Metal {
-    face: [0xc8, 0x53, 0x42],
-    stud: [0xf6, 0xdc, 0x96],
+    face: [0x4a, 0x51, 0x45],
+    stud: [0x8c, 0x7e, 0x5c],
 };
 
 pub fn chrome(rows: &[&str], metal: Metal) -> (Vec<u8>, u32, u32) {
@@ -679,6 +804,27 @@ pub enum Icon {
     Spade,
     Paw,
     Chevron,
+    Sponge,
+    Wave,
+    Snowflake,
+    Seed,
+    Flower,
+    Cloud,
+    Sun,
+    Mound,
+    Pit,
+    Level,
+    Trowel,
+    Crack,
+    Bolt,
+    Flame,
+    Flask,
+    Bomb,
+    Meteor,
+    Volcano,
+    Heart,
+    Skull,
+    Halo,
 }
 
 const BLOCK: [&str; SPRITE] = [
@@ -985,6 +1131,405 @@ const BUCKET: [&str; SPRITE] = [
     "................",
 ];
 
+const SPONGE: [&str; SPRITE] = [
+    "................",
+    "................",
+    ".....LLLLLLLLL..",
+    "....LLLLLLLLLD..",
+    "...LLLLLLLLLDD..",
+    "..CCCCCCCCCDDD..",
+    "..CCDCCCCDCDDD..",
+    "..CCCCCCCCCDDD..",
+    "..CCCCDCCCCDDD..",
+    "..CDCCCCCCCDDD..",
+    "..CCCCCCDCCDDD..",
+    "..CCCDCCCCCDD...",
+    "..CCCCCCCCCD....",
+    "................",
+    "................",
+    "................",
+];
+
+const WAVE: [&str; SPRITE] = [
+    "................",
+    "................",
+    ".......LLLL.....",
+    ".....LLCCCCL....",
+    "....LCCCDDCCW...",
+    "...LCCDD..WCW...",
+    "..LCCD.....W....",
+    "..LCCD..........",
+    ".LCCCD......W...",
+    ".LCCCCD....WLW..",
+    ".CCCCCCDDWLLCCW.",
+    "WCCCCCCCCCCCCCCW",
+    ".DDDDDDDDDDDDDD.",
+    "................",
+    "................",
+    "................",
+];
+
+const SNOWFLAKE: [&str; SPRITE] = [
+    "................",
+    ".......W........",
+    ".....L.L.L......",
+    "......LLL.......",
+    "..L....L....L...",
+    "...L...L...L....",
+    "....L..L..L.....",
+    ".WLLLLLCLLLLLW..",
+    "....L..L..L.....",
+    "...L...L...L....",
+    "..L....L....L...",
+    "......LLL.......",
+    ".....L.L.L......",
+    ".......W........",
+    "................",
+    "................",
+];
+
+const SEED: [&str; SPRITE] = [
+    "................",
+    ".......A........",
+    "......AAA.A.....",
+    ".....AA.BAA.....",
+    "........B.......",
+    "......EEEE......",
+    ".......EE.......",
+    ".....LCCCCD.....",
+    "....LCCCCCCD....",
+    "...LCCCCCCCCD...",
+    "..LCCCCCCCCCCD..",
+    "..LCCCCBBCCCCD..",
+    "..CCCCBAABCCCD..",
+    "..DCCCCBBCCCDD..",
+    "...DDDDDDDDDD...",
+    "................",
+];
+
+const FLOWER: [&str; SPRITE] = [
+    "................",
+    ".....LLLL.......",
+    "...LLCCCCLL.....",
+    "..LCCCWWCCCD....",
+    "..CCCWWWWCCD....",
+    "..CCCWWWWCCD....",
+    "..DCCCWWCCDD....",
+    "...DDCCCCDD.....",
+    ".....DDAD.......",
+    ".......A....AA..",
+    "..AA...A...AAB..",
+    "..BAA..A..AAB...",
+    "...BAA.A.AB.....",
+    ".....BAAAB......",
+    ".......AB.......",
+    "................",
+];
+
+const CLOUD: [&str; SPRITE] = [
+    "................",
+    "................",
+    "......LLLL......",
+    "....LLLLLLLL....",
+    "...LLLLLLLLLLL..",
+    ".LLLLLLLLLLLLLL.",
+    "LLLLCCCCCCCCCCLL",
+    "LCCCCCCCCCCCCCCD",
+    ".DCCCCCCCCCCCCD.",
+    "..DDDDDDDDDDDD..",
+    "................",
+    "...A....A....A..",
+    "..AA...AA...AA..",
+    "..AB...AB...AB..",
+    "...B....B....B..",
+    "................",
+];
+
+const SUN: [&str; SPRITE] = [
+    "................",
+    ".......AA.......",
+    "..A....AA....A..",
+    "...A........A...",
+    "......LLLL......",
+    ".....LCCCCD.....",
+    "....LCCCCCCD....",
+    "AA..LCCCCCCD..AA",
+    "AA..CCCCCCCD..AA",
+    "....DCCCCCDD....",
+    ".....DCCCDD.....",
+    "......DDDD......",
+    "...A........A...",
+    "..A....AA....A..",
+    ".......AA.......",
+    "................",
+];
+
+const MOUND: [&str; SPRITE] = [
+    ".......WW.......",
+    "......WWWW......",
+    ".....WWWWWW.....",
+    "....WWWWWWWW....",
+    ".......WW.......",
+    ".......WW.......",
+    "................",
+    "......AAAA......",
+    ".....ALLCCB.....",
+    "....ALLCCCCB....",
+    "...ALCCCCCCDB...",
+    "..ALCCCCCCCDDB..",
+    ".ALCCCCCCCCDDDB.",
+    ".BBBBBBBBBBBBBB.",
+    "................",
+    "................",
+];
+
+const PIT: [&str; SPRITE] = [
+    ".......WW.......",
+    ".......WW.......",
+    ".......WW.......",
+    "....WWWWWWWW....",
+    ".....WWWWWW.....",
+    "......WWWW......",
+    ".......WW.......",
+    "................",
+    "..LLLLLLLLLLLL..",
+    ".LLLLEEEEEELLLL.",
+    ".CCCEEEEEEEECCC.",
+    ".CCCCEEEEEECCCC.",
+    ".DCCCCDDDDCCCCD.",
+    ".DDDDDDDDDDDDDD.",
+    "................",
+    "................",
+];
+
+const LEVEL: [&str; SPRITE] = [
+    "................",
+    "................",
+    "................",
+    "..W..........W..",
+    ".WW..........WW.",
+    ".EEEEEEEEEEEEEE.",
+    ".ELLLLLLLLLLLLE.",
+    ".ECCCEEEEEECCCE.",
+    ".ECCCEAWAAECCCE.",
+    ".ECCCEBBBBECCCE.",
+    ".ECCCEEEEEECCCE.",
+    ".EDDDDDDDDDDDDE.",
+    ".EEEEEEEEEEEEEE.",
+    "................",
+    "................",
+    "................",
+];
+
+const TROWEL: [&str; SPRITE] = [
+    "................",
+    "............AB..",
+    "...........AAB..",
+    "..........AAB...",
+    ".........AAB....",
+    "........EB......",
+    ".......EE.......",
+    "....LLLLLLL.....",
+    "...LLCCCCCCD....",
+    "..LCCCCCCCCD....",
+    ".LCCCCCCCCDD....",
+    "LCCCCCCCCDD.....",
+    "DDDDDDDDDD......",
+    "................",
+    "................",
+    "................",
+];
+
+const CRACK: [&str; SPRITE] = [
+    "................",
+    "................",
+    "..W..........W..",
+    "................",
+    "..LLLLLELLLLLL..",
+    ".LLLLLLEELLLLLL.",
+    ".CCCCCCCECCCCCC.",
+    ".CCCCCCEECCCCCC.",
+    ".CCCCCCECCCCCCC.",
+    ".DDDDDDEEDDDDDD.",
+    ".DDDDDDDEDDDDDD.",
+    "..DDDDDDEEDDDD..",
+    "................",
+    ".W.W........W.W.",
+    "................",
+    "................",
+];
+
+const BOLT: [&str; SPRITE] = [
+    "................",
+    "........LLLL....",
+    ".......LCCD.....",
+    "......LCCD......",
+    ".....LCCD.......",
+    "....LCCD........",
+    "...LCCCCCCCD....",
+    "...DDDDLCCD.....",
+    "......LCCD......",
+    ".....LCCD.......",
+    "....LCCD........",
+    "...LCD..........",
+    "..LD............",
+    "..D.............",
+    "................",
+    "................",
+];
+
+const FLAME: [&str; SPRITE] = [
+    "................",
+    ".......L........",
+    "......LC........",
+    "......LCC.......",
+    ".....LCCC...L...",
+    "...L.LCCCD..LC..",
+    "...LCLCCCCD.LC..",
+    "..LCCCCAACCDCCD.",
+    "..LCCCAAAACCCCD.",
+    "..LCCAAWAAACCCD.",
+    "..CCCAAWWAACCCD.",
+    "..DCCAAAAAACCDD.",
+    "...DCCAAAACCDD..",
+    "....DDCCCCDD....",
+    "......DDDD......",
+    "................",
+];
+
+const FLASK: [&str; SPRITE] = [
+    "................",
+    "......EEEE......",
+    "......EWAE......",
+    "......EWAE......",
+    "......EWAE......",
+    ".....EWAAAE.....",
+    "....EWAAAAAE....",
+    "...EWLLLLLLLE...",
+    "..EWLCCCCCCCCE..",
+    "..ECCCLCCCCLCE..",
+    "..ECCCCCCLCCCE..",
+    "..ECCLCCCCCCDE..",
+    "..EDCCCCCCCDDE..",
+    "...EDDDDDDDDE...",
+    "....EEEEEEEE....",
+    "................",
+];
+
+const BOMB: [&str; SPRITE] = [
+    "...........A.A..",
+    "............W...",
+    "...........AB.A.",
+    "..........B.....",
+    ".........B......",
+    "......EEEE......",
+    "....LLLLCCCC....",
+    "...LLWLCCCCCD...",
+    "..LLWLCCCCCCCD..",
+    "..LLCCCCCCCCDD..",
+    "..LCCCCCCCCCDD..",
+    "..CCCCCCCCCDDD..",
+    "...CCCCCCCDDD...",
+    "....DDDDDDDD....",
+    "......DDDD......",
+    "................",
+];
+
+const METEOR: [&str; SPRITE] = [
+    "................",
+    ".............AA.",
+    "...........AAA..",
+    ".........AAAB...",
+    "........AAAB....",
+    "......LAAAB.....",
+    ".....LLCAB......",
+    "...LLLCCCB......",
+    "..LLCCCCCCD.....",
+    "..LCCDCCCCD.....",
+    "..LCCCCCDCD.....",
+    "..CCCDCCCDD.....",
+    "...CCCCCDD......",
+    "....DDDDD.......",
+    "................",
+    "................",
+];
+
+const VOLCANO: [&str; SPRITE] = [
+    "................",
+    "......W..W......",
+    ".....W..W.......",
+    "......AAAA......",
+    ".....AAWWAA.....",
+    "......LAAC......",
+    ".....LCAACD.....",
+    "....LCCCACCD....",
+    "....LCCCACCDD...",
+    "...LCCCCCACCD...",
+    "...LCCCCCACCDD..",
+    "..LCCCCCCCBCCDD.",
+    "..CCCCCCCCCCDDD.",
+    ".DDDDDDDDDDDDDD.",
+    "................",
+    "................",
+];
+
+const HEART: [&str; SPRITE] = [
+    "................",
+    "................",
+    "...LLL...LLL....",
+    "..LWWCC.LCCCD...",
+    ".LWWCCCCCCCCCD..",
+    ".LWCCCCCCCCCCD..",
+    ".LCCCCCCCCCCCD..",
+    "..CCCCCCCCCCD...",
+    "...CCCCCCCCD....",
+    "....CCCCCCD.....",
+    ".....CCCCD......",
+    "......CCD.......",
+    ".......D........",
+    "................",
+    "................",
+    "................",
+];
+
+const SKULL: [&str; SPRITE] = [
+    "................",
+    ".....LLLLLL.....",
+    "...LLCCCCCCLL...",
+    "..LCCCCCCCCCCD..",
+    "..LCCCCCCCCCCD..",
+    "..CCEEECCEEECD..",
+    "..CCEEECCEEECD..",
+    "..CCEEECCEEECD..",
+    "..DCCCCEECCCDD..",
+    "...DCCCCCCCCD...",
+    "....CECECECD....",
+    "....DCDCDCDD....",
+    ".....DDDDDD.....",
+    "................",
+    "................",
+    "................",
+];
+
+const HALO: [&str; SPRITE] = [
+    "................",
+    "....LLLLLLLL....",
+    "..LLCCCCCCCCLL..",
+    ".LC..........CD.",
+    "..DDCCCCCCCCDD..",
+    "....DDDDDDDD....",
+    "................",
+    "...A...AA...A...",
+    "...A...AA...A...",
+    "..AA..AAAA..AA..",
+    "..AA..AAAA..AA..",
+    ".AAA.AAWWAA.AAA.",
+    ".AAA.AAWWAA.AAA.",
+    ".BBB.BBBBBB.BBB.",
+    "................",
+    "................",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ink {
     pub base: [u8; 3],
@@ -992,6 +1537,7 @@ pub struct Ink {
 }
 
 pub const STEEL: [u8; 3] = [0xc2, 0xc8, 0xd2];
+pub const CYAN: [u8; 3] = [0x0a, 0xc0, 0xeb];
 pub const WOOD: [u8; 3] = [0x8a, 0x5c, 0x32];
 pub const EARTH: [u8; 3] = [0x7a, 0x5a, 0x3c];
 pub const AMBER: [u8; 3] = [0xf0, 0xb4, 0x3a];
@@ -1022,6 +1568,27 @@ impl Icon {
             Self::Spade => &SPADE,
             Self::Paw => &PAW,
             Self::Chevron => &CHEVRON,
+            Self::Sponge => &SPONGE,
+            Self::Wave => &WAVE,
+            Self::Snowflake => &SNOWFLAKE,
+            Self::Seed => &SEED,
+            Self::Flower => &FLOWER,
+            Self::Cloud => &CLOUD,
+            Self::Sun => &SUN,
+            Self::Mound => &MOUND,
+            Self::Pit => &PIT,
+            Self::Level => &LEVEL,
+            Self::Trowel => &TROWEL,
+            Self::Crack => &CRACK,
+            Self::Bolt => &BOLT,
+            Self::Flame => &FLAME,
+            Self::Flask => &FLASK,
+            Self::Bomb => &BOMB,
+            Self::Meteor => &METEOR,
+            Self::Volcano => &VOLCANO,
+            Self::Heart => &HEART,
+            Self::Skull => &SKULL,
+            Self::Halo => &HALO,
         }
     }
 
@@ -1051,13 +1618,13 @@ impl Icon {
                 base: BONE,
                 accent: BONE,
             },
-            Self::Play | Self::Round | Self::Square | Self::Minus | Self::Plus => Ink {
+            Self::Play | Self::Pause => Ink {
+                base: CYAN,
+                accent: CYAN,
+            },
+            Self::Round | Self::Square | Self::Minus | Self::Plus => Ink {
                 base: STEEL,
                 accent: STEEL,
-            },
-            Self::Pause => Ink {
-                base: AMBER,
-                accent: AMBER,
             },
             Self::Hourglass => Ink {
                 base: AMBER,
@@ -1087,6 +1654,90 @@ impl Icon {
                 base: AMBER,
                 accent: AMBER,
             },
+            Self::Sponge => Ink {
+                base: [0xf2, 0xc8, 0x3c],
+                accent: [0xf2, 0xc8, 0x3c],
+            },
+            Self::Wave => Ink {
+                base: [0x40, 0x9c, 0xe8],
+                accent: [0x40, 0x9c, 0xe8],
+            },
+            Self::Snowflake => Ink {
+                base: [0x8c, 0xd4, 0xf8],
+                accent: [0x8c, 0xd4, 0xf8],
+            },
+            Self::Seed => Ink {
+                base: [0xc8, 0x96, 0x58],
+                accent: [0x6f, 0xb8, 0x4e],
+            },
+            Self::Flower => Ink {
+                base: [0xf0, 0x6c, 0x9c],
+                accent: [0x6f, 0xb8, 0x4e],
+            },
+            Self::Cloud => Ink {
+                base: [0xc8, 0xd4, 0xe0],
+                accent: [0x55, 0xae, 0xf0],
+            },
+            Self::Sun => Ink {
+                base: [0xf0, 0xa8, 0x30],
+                accent: [0xf8, 0xdc, 0x48],
+            },
+            Self::Mound => Ink {
+                base: [0x8e, 0x96, 0x9e],
+                accent: [0x6a, 0x9e, 0x4a],
+            },
+            Self::Pit => Ink {
+                base: [0xc2, 0x7a, 0x40],
+                accent: [0xc2, 0x7a, 0x40],
+            },
+            Self::Level => Ink {
+                base: [0xf0, 0xb4, 0x3a],
+                accent: [0x7c, 0xe0, 0x6a],
+            },
+            Self::Trowel => Ink {
+                base: [0xc2, 0xc8, 0xd2],
+                accent: [0x8a, 0x5c, 0x32],
+            },
+            Self::Crack => Ink {
+                base: [0xc2, 0x7a, 0x40],
+                accent: [0xc2, 0x7a, 0x40],
+            },
+            Self::Bolt => Ink {
+                base: [0xf8, 0xd0, 0x30],
+                accent: [0xf8, 0xd0, 0x30],
+            },
+            Self::Flame => Ink {
+                base: [0xf0, 0x6a, 0x24],
+                accent: [0xf8, 0xd0, 0x40],
+            },
+            Self::Flask => Ink {
+                base: [0x8c, 0xe0, 0x3c],
+                accent: [0xb8, 0xc4, 0xd0],
+            },
+            Self::Bomb => Ink {
+                base: [0x50, 0x56, 0x64],
+                accent: [0xf8, 0xb8, 0x30],
+            },
+            Self::Meteor => Ink {
+                base: [0x9a, 0x6e, 0x52],
+                accent: [0xf0, 0x7a, 0x2a],
+            },
+            Self::Volcano => Ink {
+                base: [0x6e, 0x5e, 0x56],
+                accent: [0xff, 0xa0, 0x10],
+            },
+            Self::Heart => Ink {
+                base: [0xe8, 0x4a, 0x5a],
+                accent: [0xe8, 0x4a, 0x5a],
+            },
+            Self::Skull => Ink {
+                base: [0xde, 0xda, 0xcc],
+                accent: [0x9c, 0x5c, 0xd8],
+            },
+            Self::Halo => Ink {
+                base: [0xf8, 0xd0, 0x50],
+                accent: [0xff, 0xf0, 0xa0],
+            },
         }
     }
 }
@@ -1097,15 +1748,26 @@ pub fn icon(kind: Icon, tint: Option<[u8; 3]>) -> Vec<[u8; 4]> {
         Some(tint) if kind.takes_tint() => tint,
         _ => ink.base,
     };
-    let dark = shade(base, 0.62);
-    let light = shade(base, 1.28);
+
+    inked(
+        kind.template(),
+        Ink {
+            base,
+            accent: ink.accent,
+        },
+    )
+}
+
+pub fn inked(rows: &[&str; SPRITE], ink: Ink) -> Vec<[u8; 4]> {
+    let dark = shade(ink.base, 0.62);
+    let light = shade(ink.base, 1.28);
     let accent_dark = shade(ink.accent, 0.62);
     let mut out = vec![CLEAR; PIXELS];
 
-    for (y, row) in kind.template().iter().enumerate() {
+    for (y, row) in rows.iter().enumerate() {
         for (x, glyph) in row.chars().enumerate() {
             out[y * SPRITE + x] = match glyph {
-                'C' => opaque(base),
+                'C' => opaque(ink.base),
                 'D' => opaque(dark),
                 'L' => opaque(light),
                 'A' => opaque(ink.accent),
@@ -1245,7 +1907,7 @@ mod tests {
         assert_eq!(data.len(), 32 * 16 * 4);
     }
 
-    const ICONS: [Icon; 21] = [
+    const ICONS: [Icon; 42] = [
         Icon::Block,
         Icon::Droplet,
         Icon::Sprout,
@@ -1267,6 +1929,27 @@ mod tests {
         Icon::Spade,
         Icon::Paw,
         Icon::Chevron,
+        Icon::Sponge,
+        Icon::Wave,
+        Icon::Snowflake,
+        Icon::Seed,
+        Icon::Flower,
+        Icon::Cloud,
+        Icon::Sun,
+        Icon::Mound,
+        Icon::Pit,
+        Icon::Level,
+        Icon::Trowel,
+        Icon::Crack,
+        Icon::Bolt,
+        Icon::Flame,
+        Icon::Flask,
+        Icon::Bomb,
+        Icon::Meteor,
+        Icon::Volcano,
+        Icon::Heart,
+        Icon::Skull,
+        Icon::Halo,
     ];
 
     #[test]
@@ -1339,13 +2022,156 @@ mod tests {
         }
     }
 
+    fn luma(color: [u8; 3]) -> u32 {
+        color.iter().map(|channel| u32::from(*channel)).sum()
+    }
+
+    fn tone(palette: Palette, glyph: char) -> [u8; 3] {
+        palette
+            .iter()
+            .find(|(key, _)| *key == glyph)
+            .map(|(_, color)| *color)
+            .expect("glyph in palette")
+    }
+
+    #[test]
+    fn every_palette_piece_is_a_clean_rectangle_its_palettes_can_paint() {
+        let pieces: [(&str, &[&str], usize, usize, &[Palette]); 6] = [
+            ("key", &KEY_PIECE, 24, 24, &[KEY_REST, KEY_LIT, KEY_ON]),
+            ("led", &LED_PIECE, 6, 6, &[LED_LIT]),
+            ("dot", &DOT_PIECE, 5, 5, &[DOT_OFF, DOT_ON]),
+            ("plug", &PLUG_PIECE, 26, 50, &[PLUG_RED]),
+            ("flag", &FLAG_PIECE, 40, 22, &[FLAG_REST, FLAG_ON]),
+            ("groove", &GROOVE_PIECE, 4, 20, &[GROOVE_TONE]),
+        ];
+
+        for (name, rows, width, height, palettes) in pieces {
+            assert_eq!(rows.len(), height, "{name} height");
+
+            for (at, row) in rows.iter().enumerate() {
+                assert_eq!(row.chars().count(), width, "{name} row {at}");
+
+                for glyph in row.chars().filter(|glyph| *glyph != '.') {
+                    for palette in palettes {
+                        assert!(
+                            palette.iter().any(|(key, _)| *key == glyph),
+                            "{name} uses {glyph} that a palette cannot paint"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn paint_leaves_unmapped_glyphs_transparent() {
+        let (data, width, height) = paint(&["F.", "?F"], KEY_REST);
+
+        assert_eq!((width, height), (2, 2));
+        assert_eq!(data[3], 255);
+        assert_eq!(&data[4..8], &CLEAR);
+        assert_eq!(&data[8..12], &CLEAR);
+    }
+
+    #[test]
+    fn a_key_has_rounded_corners() {
+        let (data, width, height) = paint(&KEY_PIECE, KEY_REST);
+        let alpha = |x: u32, y: u32| data[((y * width + x) * 4 + 3) as usize];
+
+        for (x, y) in [
+            (0, 0),
+            (width - 1, 0),
+            (0, height - 1),
+            (width - 1, height - 1),
+        ] {
+            assert_eq!(alpha(x, y), 0, "corner {x},{y} is filled");
+        }
+        assert_eq!(alpha(width / 2, 0), 255);
+    }
+
+    #[test]
+    fn a_key_rim_catches_the_eye_against_its_face() {
+        for palette in [KEY_REST, KEY_LIT, KEY_ON] {
+            assert!(luma(tone(palette, 'R')) > luma(tone(palette, 'F')) + 60);
+        }
+    }
+
+    #[test]
+    fn a_hovered_key_is_brighter_than_a_resting_one() {
+        assert!(luma(tone(KEY_LIT, 'R')) > luma(tone(KEY_REST, 'R')));
+        assert!(luma(tone(KEY_LIT, 'F')) > luma(tone(KEY_REST, 'F')));
+    }
+
+    #[test]
+    fn a_chosen_key_is_framed_in_red() {
+        let [r, g, b] = tone(KEY_ON, 'R');
+
+        assert!(r > g + 100 && r > b + 100, "{r},{g},{b}");
+    }
+
+    #[test]
+    fn a_resting_key_reads_apart_from_the_panel_behind_it() {
+        let apart = luma(FRAME.face).abs_diff(luma(tone(KEY_REST, 'F')));
+
+        assert!(apart > 60, "only {apart} apart");
+    }
+
+    #[test]
+    fn the_led_is_a_green_gem_with_a_glint() {
+        let [r, g, b] = tone(LED_LIT, 'G');
+
+        assert!(g > r + 100 && g > b + 100);
+        assert!(luma(tone(LED_LIT, 'H')) > luma(tone(LED_LIT, 'G')));
+    }
+
+    #[test]
+    fn a_lit_dot_outshines_an_unlit_one() {
+        assert!(luma(tone(DOT_ON, 'F')) > luma(tone(DOT_OFF, 'F')) + 150);
+    }
+
+    #[test]
+    fn the_undo_plug_is_lighter_above_its_waist_than_below() {
+        assert!(luma(tone(PLUG_RED, 'U')) > luma(tone(PLUG_RED, 'W')));
+        assert!(PLUG_PIECE[10].contains('U'));
+        assert!(PLUG_PIECE[40].contains('W'));
+    }
+
+    #[test]
+    fn a_chosen_flag_is_red_and_a_resting_one_is_not() {
+        let [r, g, b] = tone(FLAG_ON, 'F');
+        assert!(r > g + 100 && r > b + 100);
+
+        let [r, g, b] = tone(FLAG_REST, 'F');
+        assert!(r.abs_diff(g) < 20 && g.abs_diff(b) < 20);
+    }
+
+    #[test]
+    fn a_silhouette_keeps_the_shape_in_one_tone() {
+        let frame = icon(Icon::Peaks, None);
+        let flat = silhouette(&frame, TAB_INK);
+
+        assert_eq!(flat.len(), frame.len());
+        for (before, after) in frame.iter().zip(&flat) {
+            if before[3] == 0 {
+                assert_eq!(*after, CLEAR);
+            } else {
+                assert_eq!(*after, opaque(TAB_INK));
+            }
+        }
+    }
+
+    #[test]
+    fn the_time_buttons_are_drawn_in_cyan() {
+        let drawn = icon(Icon::Pause, None);
+
+        assert!(drawn.contains(&opaque(CYAN)));
+        assert!(icon(Icon::Play, None).contains(&opaque(CYAN)));
+    }
+
     #[test]
     fn every_chrome_piece_is_a_clean_rectangle_of_legal_glyphs() {
         well_formed(&RAIL_PIECE, 32, 24);
-        well_formed(&TAB_PIECE, 26, 22);
         well_formed(&CAP_PIECE, 14, 24);
-        well_formed(&DIVIDER_PIECE, 14, 24);
-        well_formed(&SLOT_PIECE, 20, 20);
     }
 
     #[test]
@@ -1364,37 +2190,24 @@ mod tests {
     }
 
     #[test]
-    fn the_stretching_middle_of_a_tab_tiles_without_a_seam() {
-        let band = &TAB_PIECE[9..19];
-
-        assert!(band.windows(2).all(|pair| pair[0] == pair[1]));
-
-        for row in band {
-            let middle: Vec<char> = row.chars().skip(10).take(6).collect();
-            assert!(middle.windows(2).all(|pair| pair[0] == pair[1]), "{row}");
-        }
-    }
-
-    #[test]
     fn a_tab_has_sloping_shoulders_that_widen_towards_the_panel() {
         let ink = |row: &str| row.chars().filter(|glyph| *glyph != '.').count();
 
-        assert!(ink(TAB_PIECE[0]) < ink(TAB_PIECE[4]));
-        assert!(ink(TAB_PIECE[4]) < ink(TAB_PIECE[8]));
-        assert_eq!(ink(TAB_PIECE[8]), 26);
+        assert!(ink(FLAG_PIECE[0]) < ink(FLAG_PIECE[4]));
+        assert!(ink(FLAG_PIECE[4]) < ink(FLAG_PIECE[8]));
+        assert_eq!(ink(FLAG_PIECE[8]), 40);
     }
 
     #[test]
     fn the_foot_of_a_tab_is_bare_so_it_merges_into_the_panel() {
-        for row in &TAB_PIECE[19..22] {
-            assert!(row.chars().all(|glyph| glyph == 'M'), "{row}");
+        for row in &FLAG_PIECE[19..22] {
+            assert!(row.chars().all(|glyph| glyph == 'F'), "{row}");
         }
     }
 
     #[test]
-    fn the_rail_and_the_divider_carry_brass_studs() {
+    fn the_rail_and_the_end_cap_carry_studs() {
         assert!(RAIL_PIECE.iter().any(|row| row.contains('B')));
-        assert!(DIVIDER_PIECE.iter().any(|row| row.contains('B')));
         assert!(CAP_PIECE.iter().any(|row| row.contains('B')));
     }
 
@@ -1454,14 +2267,19 @@ mod tests {
     fn a_stud_is_the_accent_rather_than_the_face() {
         let (data, _, _) = chrome(&["B"], FRAME);
 
-        assert_eq!(&data[0..3], &BRASS);
+        assert_eq!(&data[0..3], &FRAME.stud);
     }
 
     #[test]
     fn the_same_piece_recoloured_gives_a_different_metal() {
         let rows = ["EMLH"];
 
-        assert_ne!(chrome(&rows, FRAME).0, chrome(&rows, EMBER).0);
+        let ember = Metal {
+            face: [0xc8, 0x53, 0x42],
+            stud: BRASS,
+        };
+
+        assert_ne!(chrome(&rows, FRAME).0, chrome(&rows, ember).0);
     }
 
     #[test]

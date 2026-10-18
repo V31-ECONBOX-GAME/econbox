@@ -1,7 +1,6 @@
 pub mod config;
 pub mod hud;
 pub mod prelude;
-pub mod toolbar;
 pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties};
@@ -12,9 +11,9 @@ use econbox_clock::ClockPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_tileview::TileViewPlugin;
+use econbox_toolbar::ToolbarPlugin;
 use hud::HudPlugin;
 use prelude::*;
-use toolbar::ToolbarPlugin;
 
 pub fn ocean() -> Color {
     let [r, g, b] = Ground::DeepOcean.color();

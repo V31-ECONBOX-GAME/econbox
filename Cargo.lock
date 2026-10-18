@@ -2442,6 +2442,7 @@ dependencies = [
  "econbox-tile",
  "econbox-tilemap",
  "econbox-tileview",
+ "econbox-toolbar",
  "serde",
 ]
 
@@ -2608,6 +2609,21 @@ dependencies = [
  "econbox-tile",
  "econbox-tilemap",
  "econbox-worldgen",
+]
+
+[[package]]
+name = "econbox-toolbar"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "econbox-art",
+ "econbox-brush",
+ "econbox-camera",
+ "econbox-clock",
+ "econbox-creature",
+ "econbox-cursor",
+ "econbox-tile",
+ "econbox-tilemap",
 ]
 
 [[package]]

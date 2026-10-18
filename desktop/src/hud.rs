@@ -21,12 +21,12 @@ fn spawn(mut commands: Commands) {
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                right: Val::Px(16.0),
-                top: Val::Px(16.0),
+                right: Val::Px(11.0),
+                top: Val::Px(11.0),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::FlexEnd,
-                row_gap: Val::Px(4.0),
-                padding: UiRect::all(Val::Px(12.0)),
+                row_gap: Val::Px(3.0),
+                padding: UiRect::all(Val::Px(8.0)),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.04, 0.06, 0.09, 0.74)),
@@ -36,7 +36,7 @@ fn spawn(mut commands: Commands) {
                 panel.spawn((
                     HudLine(line),
                     Text::new(""),
-                    TextFont::from_font_size(15.0),
+                    TextFont::from_font_size(10.0),
                     TextColor(Color::srgb(0.88, 0.92, 0.96)),
                 ));
             }

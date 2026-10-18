@@ -13,6 +13,8 @@ use econbox_tilemap::{TileMap, TilePos};
 pub const CREATURE_LAYER: f32 = 1.0;
 pub const WANDER_REACH: u32 = 6;
 pub const STARVING: f32 = 0.0;
+pub const DROWN_RATE: f32 = 8.0;
+pub const BURN_RATE: f32 = 30.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Kind {
@@ -137,7 +139,9 @@ impl Species {
     }
 
     pub fn stands_on(self, tile: Tile) -> bool {
-        if tile.is_water() {
+        if tile.is_lava() {
+            false
+        } else if tile.is_water() {
             self.swims()
         } else {
             self.walks()
@@ -289,6 +293,36 @@ impl Creature {
     pub fn starving(&self) -> bool {
         self.food <= STARVING
     }
+
+    pub fn suffer(&mut self, effect: Effect) {
+        match effect {
+            Effect::Kill => self.health = 0.0,
+            Effect::Hurt(amount) => self.health -= amount,
+            Effect::Heal => {
+                self.health = self.species.health();
+                self.food = 1.0;
+            }
+            Effect::Weaken => self.health *= 0.5,
+            Effect::Purge if self.species.kind() == Kind::Monster => self.health = 0.0,
+            Effect::Purge => {}
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Effect {
+    Kill,
+    Hurt(f32),
+    Heal,
+    Weaken,
+    Purge,
+}
+
+#[derive(Message, Debug, Clone, Copy)]
+pub struct Strike {
+    pub centre: TilePos,
+    pub reach: f32,
+    pub effect: Effect,
 }
 
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -306,6 +340,22 @@ pub struct Spawn {
 #[derive(Resource, Debug, Clone, Copy, Default)]
 pub struct Census {
     pub alive: usize,
+    pub deaths: u64,
+    pub per_species: [usize; SPECIES.len()],
+}
+
+impl Census {
+    pub fn of(&self, species: Species) -> usize {
+        self.per_species[species.slot()]
+    }
+
+    pub fn of_kind(&self, kind: Kind) -> usize {
+        SPECIES
+            .iter()
+            .filter(|species| species.kind() == kind)
+            .map(|species| self.of(*species))
+            .sum()
+    }
 }
 
 pub fn centre_of(map: &TileMap, pos: TilePos) -> Vec2 {
@@ -380,10 +430,11 @@ impl Plugin for CreaturePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Census>()
             .add_message::<Spawn>()
+            .add_message::<Strike>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (place, roam, live, reap, count)
+                (place, roam, live, smite, strand, reap, count)
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -535,19 +586,73 @@ fn live(time: Res<Time>, clock: Res<WorldClock>, mut creatures: Query<&mut Creat
     }
 }
 
-fn reap(mut commands: Commands, creatures: Query<(Entity, &Creature)>) {
+fn smite(
+    mut asked: MessageReader<Strike>,
+    map: Res<TileMap>,
+    mut creatures: Query<(&mut Creature, &Transform)>,
+) {
+    for strike in asked.read() {
+        let centre = centre_of(&map, strike.centre);
+        let reach = (strike.reach + 0.5) * TILE_SIZE;
+
+        for (mut creature, transform) in &mut creatures {
+            if transform.translation.truncate().distance(centre) <= reach {
+                creature.suffer(strike.effect);
+            }
+        }
+    }
+}
+
+fn strand(
+    time: Res<Time>,
+    clock: Res<WorldClock>,
+    map: Res<TileMap>,
+    mut creatures: Query<(&mut Creature, &Transform)>,
+) {
+    let rate = clock.rate();
+
+    if rate == 0.0 {
+        return;
+    }
+
+    let step = time.delta_secs() * rate;
+
+    for (mut creature, transform) in &mut creatures {
+        let Some(tile) =
+            tile_of(&map, transform.translation.truncate()).and_then(|pos| map.get(pos))
+        else {
+            continue;
+        };
+
+        if tile.is_lava() {
+            creature.health -= BURN_RATE * step;
+        } else if !creature.species.stands_on(tile) {
+            creature.health -= DROWN_RATE * step;
+        }
+    }
+}
+
+fn reap(mut commands: Commands, creatures: Query<(Entity, &Creature)>, mut census: ResMut<Census>) {
     for (entity, creature) in &creatures {
         if !creature.alive() {
             commands.entity(entity).despawn();
+            census.deaths += 1;
         }
     }
 }
 
 fn count(creatures: Query<&Creature>, mut census: ResMut<Census>) {
-    let alive = creatures.iter().count();
+    let mut per_species = [0; SPECIES.len()];
 
-    if census.alive != alive {
+    for creature in &creatures {
+        per_species[creature.species.slot()] += 1;
+    }
+
+    let alive = per_species.iter().sum();
+
+    if census.alive != alive || census.per_species != per_species {
         census.alive = alive;
+        census.per_species = per_species;
     }
 }
 
@@ -610,6 +715,69 @@ mod tests {
     fn a_frog_is_at_home_on_both_sides_of_the_shore() {
         assert!(Species::Frog.stands_on(Tile::bare(Ground::ShallowWaters)));
         assert!(Species::Frog.stands_on(Tile::new(Ground::SoilLow, Overlay::Grass)));
+    }
+
+    #[test]
+    fn nothing_will_set_foot_on_lava() {
+        let lava = Tile::bare(Ground::Lava3);
+
+        for species in SPECIES {
+            assert!(!species.stands_on(lava), "{}", species.name());
+        }
+    }
+
+    #[test]
+    fn a_kill_ends_any_creature_however_tough() {
+        let mut demon = Creature::new(Species::Demon);
+        demon.suffer(Effect::Kill);
+
+        assert!(!demon.alive());
+    }
+
+    #[test]
+    fn a_hurt_takes_exactly_what_it_says() {
+        let mut ogre = Creature::new(Species::Ogre);
+        ogre.suffer(Effect::Hurt(10.0));
+
+        assert_eq!(ogre.health, Species::Ogre.health() - 10.0);
+    }
+
+    #[test]
+    fn a_blessing_makes_a_creature_whole_and_fed_again() {
+        let mut human = Creature::new(Species::Human);
+        human.health = 1.0;
+        human.food = 0.0;
+        human.suffer(Effect::Heal);
+
+        assert_eq!(human.health, Species::Human.health());
+        assert!(!human.starving());
+    }
+
+    #[test]
+    fn a_curse_halves_health_but_never_kills_on_its_own() {
+        let mut cow = Creature::new(Species::Cow);
+
+        for _ in 0..40 {
+            cow.suffer(Effect::Weaken);
+        }
+
+        assert!(cow.alive());
+        assert!(cow.health < 1e-3);
+    }
+
+    #[test]
+    fn a_purge_takes_monsters_and_spares_everyone_else() {
+        for species in SPECIES {
+            let mut creature = Creature::new(species);
+            creature.suffer(Effect::Purge);
+
+            assert_eq!(
+                creature.alive(),
+                species.kind() != Kind::Monster,
+                "{}",
+                species.name()
+            );
+        }
     }
 
     #[test]
