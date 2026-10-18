@@ -3,11 +3,11 @@
 use crate::art::{Kit, sliced};
 use crate::bar::px;
 use crate::layout::BUTTON;
-use crate::motion::{Curve, Pop};
 use crate::press::press_pop;
-use crate::size::KeepSize;
+use crate::size::UiLayer;
 use crate::sound::Cue;
-use crate::tips::{TITLE, Tip, WINDOW_RATIO};
+use crate::tips::{TITLE, Tip};
+use crate::windows::{Slide, WindowRoot};
 use crate::{OpenWindow, Panel};
 use bevy::picking::events::PointerClick;
 use bevy::picking::hover::Hovered;
@@ -15,17 +15,14 @@ use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use econbox_brush::{Brush, GROUPS, Group, PRESETS};
 
-const WIDTH: f32 = 240.0 * WINDOW_RATIO;
-const HEIGHT: f32 = 320.0 * WINDOW_RATIO;
-const LIST_WIDTH: f32 = 192.0 * WINDOW_RATIO;
-const LIST_TOP: f32 = 34.5 * WINDOW_RATIO;
-const CELL: f32 = BUTTON * WINDOW_RATIO;
-const SPACING: f32 = 5.0 * WINDOW_RATIO;
-const GROUP_GAP: f32 = 10.0 * WINDOW_RATIO;
-const PAD: f32 = 3.0 * WINDOW_RATIO;
-
-#[derive(Component)]
-pub struct Shade;
+const WIDTH: f32 = 240.0;
+const HEIGHT: f32 = 320.0;
+const LIST_WIDTH: f32 = 192.0;
+const LIST_TOP: f32 = 34.5;
+const CELL: f32 = BUTTON;
+const SPACING: f32 = 5.0;
+const GROUP_GAP: f32 = 10.0;
+const PAD: f32 = 3.0;
 
 #[derive(Component)]
 pub struct BrushWindow;
@@ -52,25 +49,15 @@ fn tip_for(at: usize) -> Tip {
 pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
     let Some(kit) = kit else { return };
 
-    commands.spawn((
-        Shade,
-        GlobalZIndex(500),
-        Node {
-            position_type: PositionType::Absolute,
-            left: px(0.0),
-            right: px(0.0),
-            top: px(0.0),
-            bottom: px(0.0),
-            display: Display::None,
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.35)),
-    ));
-
     commands
         .spawn((
             BrushWindow,
-            KeepSize,
+            WindowRoot {
+                panel: Panel::Brushes,
+                width: WIDTH,
+            },
+            Slide::default(),
+            UiLayer::Windows,
             GlobalZIndex(600),
             UiTransform::default(),
             Node {
@@ -100,12 +87,12 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                     position_type: PositionType::Absolute,
                     left: px(0.0),
                     right: px(0.0),
-                    top: px(6.6 * WINDOW_RATIO),
+                    top: px(6.6),
                     justify_content: JustifyContent::Center,
                     ..default()
                 },
                 Text::new("Brush"),
-                TextFont::from_font_size(10.0 * WINDOW_RATIO),
+                TextFont::from_font_size(10.0),
                 TextColor(TITLE),
             ));
 
@@ -113,10 +100,10 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                 .spawn((
                     Node {
                         position_type: PositionType::Absolute,
-                        left: px(WIDTH * 0.5 + 104.2 * WINDOW_RATIO - 20.0 * WINDOW_RATIO),
-                        top: px(HEIGHT * 0.5 - 152.5 * WINDOW_RATIO - 18.0 * WINDOW_RATIO),
-                        width: px(40.0 * WINDOW_RATIO),
-                        height: px(36.0 * WINDOW_RATIO),
+                        left: px(WIDTH * 0.5 + 104.2 - 20.0),
+                        top: px(HEIGHT * 0.5 - 152.5 - 18.0),
+                        width: px(40.0),
+                        height: px(36.0),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         ..default()
@@ -145,8 +132,8 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                         close.spawn((
                             Pickable::IGNORE,
                             Node {
-                                width: px(24.0 * WINDOW_RATIO),
-                                height: px(24.0 * WINDOW_RATIO),
+                                width: px(24.0),
+                                height: px(24.0),
                                 ..default()
                             },
                             ImageNode::new(kit.close.clone()),
@@ -197,7 +184,6 @@ fn spawn_group(list: &mut ChildSpawnerCommands, kit: &Kit, group: Group) {
             }
 
             let (image, size) = &kit.brushes[at];
-            let size = *size * WINDOW_RATIO;
 
             grid.spawn((
                 PresetButton(at),
@@ -237,7 +223,6 @@ pub fn on_click(
     mut commands: Commands,
     presets: Query<&PresetButton>,
     closes: Query<(), With<CloseWindow>>,
-    shades: Query<(), With<Shade>>,
     mut brush: ResMut<Brush>,
     mut open: ResMut<OpenWindow>,
     mut cues: MessageWriter<Cue>,
@@ -258,40 +243,5 @@ pub fn on_click(
         click.propagate(false);
         cues.write(Cue::Click);
         open.0 = None;
-    } else if shades.contains(entity) {
-        click.propagate(false);
-        open.0 = None;
-    }
-}
-
-pub fn show(
-    mut commands: Commands,
-    open: Res<OpenWindow>,
-    mut windows: Query<(Entity, &mut Node), With<BrushWindow>>,
-    mut shades: Query<&mut Node, (With<Shade>, Without<BrushWindow>)>,
-) {
-    if !open.is_changed() {
-        return;
-    }
-
-    let visible = open.0 == Some(Panel::Brushes);
-    let display = if visible {
-        Display::Flex
-    } else {
-        Display::None
-    };
-
-    for (entity, mut node) in &mut windows {
-        node.display = display;
-
-        if visible {
-            commands
-                .entity(entity)
-                .insert(Pop::new(Vec2::splat(0.9), 0.15, Curve::OutBack));
-        }
-    }
-
-    for mut node in &mut shades {
-        node.display = display;
     }
 }

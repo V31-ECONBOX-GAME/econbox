@@ -66,7 +66,6 @@ pub fn smooth_damp(current: f32, target: f32, speed: &mut f32, time: f32, dt: f3
 pub enum Curve {
     OutCubic,
     InBack,
-    OutBack,
     InOutBack,
 }
 
@@ -77,7 +76,6 @@ impl Curve {
         match self {
             Self::OutCubic => out_cubic(t),
             Self::InBack => in_back(t),
-            Self::OutBack => out_back(t),
             Self::InOutBack => in_out_back(t),
         }
     }
@@ -225,12 +223,7 @@ mod tests {
 
     #[test]
     fn every_curve_starts_at_zero_and_ends_at_one() {
-        for curve in [
-            Curve::OutCubic,
-            Curve::InBack,
-            Curve::OutBack,
-            Curve::InOutBack,
-        ] {
+        for curve in [Curve::OutCubic, Curve::InBack, Curve::InOutBack] {
             assert!(curve.at(0.0).abs() < 1e-5, "{curve:?}");
             assert!((curve.at(1.0) - 1.0).abs() < 1e-5, "{curve:?}");
         }

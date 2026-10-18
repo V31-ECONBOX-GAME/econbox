@@ -1,3 +1,4 @@
+use crate::Panel;
 use crate::catalog::Act;
 use crate::catalog::{Def, Element, Item, Kind, Look, Plate, TabDef, TabId, Tint};
 use econbox_art::ui::TabMark;
@@ -150,7 +151,7 @@ pub const MAIN: TabDef = TabDef {
             name: "Settings",
             about: "Game options and preferences.",
             kind: Kind::Window,
-            act: Act::Planned("settings window"),
+            act: Act::Window(Panel::Other),
             look: Look::Glyph(Glyph::Gear, None, None),
             sizes: false,
             brush: None,

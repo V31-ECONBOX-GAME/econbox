@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="559" height="168" viewBox="0 0 559 168" role="img" aria-label="Play time: 42 hours over 27 commits, last played 18 Oct">
+<svg xmlns="http://www.w3.org/2000/svg" width="559" height="168" viewBox="0 0 559 168" role="img" aria-label="Play time: 44 hours over 28 commits, last played 18 Oct">
   <style>
     .card { fill: #0d1117; stroke: #30363d }
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif }
@@ -11,9 +11,9 @@
   </style>
   <rect class="card" x="0.5" y="0.5" width="558" height="167" rx="8"/>
   <text class="label" x="24" y="40">PLAY TIME</text>
-  <text class="stat" x="24" y="62">42 hours</text>
+  <text class="stat" x="24" y="62">44 hours</text>
   <text class="label" x="535" y="40" text-anchor="end">LAST PLAYED <tspan class="stat">18 Oct</tspan></text>
-  <text class="note" x="535" y="62" text-anchor="end">6 hours in the last 14 days   ·   18 sittings   ·   27 commits</text>
+  <text class="note" x="535" y="62" text-anchor="end">8 hours in the last 14 days   ·   19 sittings   ·   28 commits</text>
   <rect class="bar" x="24.0" y="105.9" width="8" height="28.1" rx="1.5"/>
   <rect class="bar" x="36.3" y="127.5" width="8" height="6.5" rx="1.5"/>
   <rect class="bar" x="48.5" y="124.7" width="8" height="9.3" rx="1.5"/>
@@ -55,7 +55,7 @@
   <rect class="bar-quiet" x="490.2" y="131.0" width="8" height="3.0" rx="1.5"/>
   <rect class="bar-quiet" x="502.5" y="131.0" width="8" height="3.0" rx="1.5"/>
   <rect class="bar" x="514.7" y="124.7" width="8" height="9.3" rx="1.5"/>
-  <rect class="bar" x="527.0" y="115.5" width="8" height="18.5" rx="1.5"/>
+  <rect class="bar" x="527.0" y="106.2" width="8" height="27.8" rx="1.5"/>
   <text class="axis" x="24" y="152">7 Sep 2026</text>
   <text class="axis" x="279.5" y="152" text-anchor="middle">42 days</text>
   <text class="axis" x="535" y="152" text-anchor="end">18 Oct 2026</text>

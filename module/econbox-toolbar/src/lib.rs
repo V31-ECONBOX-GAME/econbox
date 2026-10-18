@@ -4,18 +4,24 @@ mod art;
 mod bar;
 mod brushes;
 pub mod catalog;
+pub mod hovering;
 mod keys;
 pub mod layout;
 mod motion;
+pub mod options;
+mod other;
 mod panels;
 mod pointer;
 mod press;
+pub mod settings;
 mod side;
+pub mod sidebar;
 pub mod size;
 mod sound;
 pub mod strip;
 mod tabs;
 mod tips;
+pub mod windows;
 
 use bevy::app::PropagateSet;
 use bevy::ecs::system::SystemParam;
@@ -27,7 +33,8 @@ use econbox_brush::{Brush, ForcedBrush, Shape, Tool, named};
 use econbox_clock::WorldClock;
 
 pub use catalog::{find, home_of};
-pub use size::{BarSize, KeepSize};
+pub use options::{Options, SettingsFile};
+pub use size::{BarSize, UiLayer};
 pub use sound::Cue;
 pub use strip::StripOrder;
 
@@ -49,6 +56,8 @@ pub struct UiHidden(pub bool);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Panel {
     Brushes,
+    Other,
+    Settings,
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -74,6 +83,7 @@ pub struct Controls<'w> {
     pub clock: ResMut<'w, WorldClock>,
     pub hidden: ResMut<'w, UiHidden>,
     pub speeds: ResMut<'w, SpeedRow>,
+    pub open: ResMut<'w, OpenWindow>,
     pub notices: MessageWriter<'w, Notice>,
 }
 
@@ -97,6 +107,9 @@ impl Controls<'_> {
             }
             (Kind::Action, Act::HideUi) => {
                 self.hidden.0 = true;
+            }
+            (_, Act::Window(panel)) => {
+                self.open.0 = Some(panel);
             }
             (Kind::Select | Kind::Spawn, _) => {
                 if self.chosen.0 == Some(def.id) {
@@ -186,11 +199,28 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<size::Preview>()
             .init_resource::<StripOrder>()
             .init_resource::<strip::StripDrag>()
+            .init_resource::<options::Options>()
+            .init_resource::<options::SettingsFile>()
+            .init_resource::<options::Unsaved>()
+            .init_resource::<windows::History>()
+            .init_resource::<windows::Exit>()
+            .init_resource::<windows::ThumbDrag>()
+            .init_resource::<hovering::Drifting>()
+            .init_resource::<settings::SettingsTab>()
+            .init_resource::<settings::SliderDrag>()
             .add_message::<Notice>()
+            .add_message::<windows::Shown>()
             .add_observer(press::on_click)
             .add_observer(press::on_press)
             .add_observer(side::on_click)
             .add_observer(brushes::on_click)
+            .add_observer(windows::on_click)
+            .add_observer(windows::on_press)
+            .add_observer(hovering::on_click)
+            .add_observer(sidebar::on_click)
+            .add_observer(settings::on_click)
+            .add_observer(settings::on_press)
+            .add_observer(other::on_click)
             .add_systems(
                 Startup,
                 (
@@ -198,6 +228,10 @@ impl Plugin for ToolbarPlugin {
                     bar::spawn,
                     side::spawn,
                     brushes::spawn,
+                    hovering::spawn,
+                    sidebar::spawn,
+                    other::spawn,
+                    settings::spawn,
                     tips::spawn,
                     pointer::spawn,
                 )
@@ -209,6 +243,7 @@ impl Plugin for ToolbarPlugin {
                 (
                     (
                         size::resize,
+                        size::follow_options,
                         fit,
                         size::preview,
                         keys::hotkeys,
@@ -220,8 +255,27 @@ impl Plugin for ToolbarPlugin {
                     )
                         .chain(),
                     (
+                        windows::right_click,
+                        windows::navigate,
+                        windows::wheel,
+                        windows::drag_thumb,
+                        windows::thumbs,
+                        windows::back_buttons,
+                        windows::critters,
+                        hovering::dim,
+                        hovering::scatter,
+                        hovering::drop_on_resize,
+                        hovering::drift,
+                        sidebar::show,
+                        sidebar::wheel,
+                        sidebar::select,
+                        settings::show_tabs,
+                        settings::drag_slider,
+                        settings::refresh,
+                    )
+                        .chain(),
+                    (
                         side::show,
-                        brushes::show,
                         press::dress,
                         press::hover,
                         panels::refresh,
@@ -231,6 +285,9 @@ impl Plugin for ToolbarPlugin {
                         pointer::footprint,
                         size::fade,
                         sound::play,
+                        options::track,
+                        options::save,
+                        options::apply_display,
                     )
                         .chain(),
                 )
@@ -238,8 +295,10 @@ impl Plugin for ToolbarPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (motion::movers, motion::pops, motion::tilts).before(bevy::ui::UiSystems::Layout),
+                (motion::movers, motion::pops, motion::tilts, windows::slides)
+                    .before(bevy::ui::UiSystems::Layout),
             )
+            .add_systems(Last, options::limit_frames)
             .add_systems(
                 PostUpdate,
                 size::keep

@@ -4,7 +4,7 @@ pub mod prelude;
 pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
-use config::{logs, windows};
+use config::{logs, settings, windows};
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
@@ -30,6 +30,9 @@ pub fn app_with(source: &Config) -> App {
         source.get(properties::APPLICATION).unwrap_or_default();
     let logging: LoggingProperties = source.get(properties::LOGGING).unwrap_or_default();
     let toolbar: ToolbarProperties = source.get(properties::TOOLBAR).unwrap_or_default();
+    let file = settings::file();
+    let options = settings::load(&file, toolbar.size);
+    let bar = BarSize::new(options.int("ui_size_main").max(0) as u32);
 
     let plugins = DefaultPlugins
         .set(windows::plugin(application))
@@ -41,7 +44,9 @@ pub fn app_with(source: &Config) -> App {
     let mut app = App::new();
     app.add_plugins(plugins)
         .insert_resource(ClearColor(ocean()))
-        .insert_resource(BarSize::new(toolbar.size))
+        .insert_resource(bar)
+        .insert_resource(options)
+        .insert_resource(file)
         .add_plugins((
             CameraPlugin,
             ClockPlugin,
@@ -69,7 +74,9 @@ fn keep_fps_size(
 ) {
     for (entity, layer) in &roots {
         if layer.0 == bevy::dev_tools::fps_overlay::FPS_OVERLAY_ZINDEX {
-            commands.entity(entity).insert(econbox_toolbar::KeepSize);
+            commands
+                .entity(entity)
+                .insert(econbox_toolbar::UiLayer::Fixed);
         }
     }
 }

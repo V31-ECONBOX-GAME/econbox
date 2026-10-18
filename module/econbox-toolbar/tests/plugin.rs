@@ -16,8 +16,8 @@ use econbox_tilemap::TileMap;
 use econbox_toolbar::catalog::TabId;
 use econbox_toolbar::size::Preview;
 use econbox_toolbar::{
-    BarSize, Chosen, Controls, Cue, KeepSize, Shown, StripOrder, ToolbarPlugin, UiHidden,
-    canvas_scale, find,
+    BarSize, Chosen, Controls, Cue, OpenWindow, Options, Panel, Shown, StripOrder, ToolbarPlugin,
+    UiHidden, UiLayer, canvas_scale, find,
 };
 
 fn app() -> App {
@@ -285,7 +285,7 @@ fn a_kept_root_is_rescaled_once_per_target_while_the_bar_follows_its_size() {
     app.insert_resource(BarSize::new(50));
     let window = app.world_mut().spawn(Window::default()).id();
     let target = || Propagate(ComputedUiRenderTargetInfo::default());
-    let kept = app.world_mut().spawn((KeepSize, target())).id();
+    let kept = app.world_mut().spawn((UiLayer::Fixed, target())).id();
     let plain = app.world_mut().spawn(target()).id();
 
     app.update();
@@ -307,4 +307,76 @@ fn a_kept_root_is_rescaled_once_per_target_while_the_bar_follows_its_size() {
     );
     assert!((scale_of(kept) - 1.5).abs() < 1e-5, "{}", scale_of(kept));
     assert_eq!(scale_of(plain), 1.0);
+}
+
+#[test]
+fn the_gear_opens_other_then_settings_and_back_walks_the_history() {
+    use econbox_toolbar::windows::History;
+
+    let mut app = app();
+    app.update();
+
+    press(&mut app, "settings_button");
+    app.update();
+    assert_eq!(app.world().resource::<OpenWindow>().0, Some(Panel::Other));
+    assert_eq!(app.world().resource::<History>().0, vec![Panel::Other]);
+
+    app.world_mut().resource_mut::<OpenWindow>().0 = Some(Panel::Settings);
+    app.update();
+    assert_eq!(
+        app.world().resource::<History>().0,
+        vec![Panel::Other, Panel::Settings]
+    );
+
+    app.world_mut().resource_mut::<OpenWindow>().0 = Some(Panel::Other);
+    app.update();
+    assert_eq!(app.world().resource::<History>().0, vec![Panel::Other]);
+
+    key(&mut app, KeyCode::Escape);
+    assert_eq!(app.world().resource::<OpenWindow>().0, None);
+    assert!(app.world().resource::<History>().0.is_empty());
+}
+
+#[test]
+fn the_bar_size_and_its_option_stay_in_step_both_ways() {
+    use econbox_toolbar::options::Value;
+
+    let mut app = app();
+    app.update();
+
+    ctrl_key(&mut app, KeyCode::Equal);
+    app.update();
+    assert_eq!(app.world().resource::<Options>().int("ui_size_main"), 110);
+
+    app.world_mut()
+        .resource_mut::<Options>()
+        .set("ui_size_main", Value::Int(70));
+    app.update();
+    assert_eq!(app.world().resource::<BarSize>().percent(), 70);
+}
+
+#[test]
+fn a_saved_settings_file_round_trips_through_the_plugin() {
+    use econbox_toolbar::SettingsFile;
+    use econbox_toolbar::options::Value;
+
+    let dir = std::env::temp_dir().join(format!("econbox-settings-{}", std::process::id()));
+    let path = dir.join("settings.toml");
+    let _ = std::fs::remove_file(&path);
+
+    let mut app = app();
+    app.insert_resource(SettingsFile(Some(path.clone())));
+    app.update();
+
+    app.world_mut()
+        .resource_mut::<Options>()
+        .set("fire", Value::Bool(false));
+    app.update();
+    app.update();
+
+    let saved = SettingsFile(Some(path.clone()))
+        .load()
+        .expect("a saved file");
+    assert!(!saved.on("fire"));
+    let _ = std::fs::remove_dir_all(dir);
 }

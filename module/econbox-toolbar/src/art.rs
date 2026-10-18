@@ -1,6 +1,7 @@
 //! Turns the drawn pixels into textures once, so every piece of the bar can share them.
 
 use crate::catalog::{Look, Plate, TabId, buttons, tab};
+use crate::options::{Mark, SETTINGS};
 use crate::tabs::TABS;
 use bevy::asset::RenderAssetUsages;
 use bevy::image::{ImageSampler, ImageSamplerDescriptor};
@@ -9,9 +10,11 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::sprite::{BorderRect, SliceScaleMode, TextureSlicer};
 use bevy::ui::widget::NodeImageMode;
 use econbox_art::ui::{self, Picture, TabMark, Well};
+use econbox_art::window::{self as frame, Scene};
 use econbox_art::{Glyph, Icon, Ink, SPRITE, Skin, glyph, icon, inked, sprite};
 use econbox_brush::{PRESETS, Preset, Shape, mask};
 use econbox_clock::SPEEDS;
+use econbox_creature::Species;
 use std::collections::HashMap;
 
 #[derive(Resource, Debug, Clone)]
@@ -45,7 +48,45 @@ pub struct Kit {
     pub pause: Handle<Image>,
     pub play: Handle<Image>,
     pub eye: Handle<Image>,
+    pub side_tab: Handle<Image>,
+    pub side_tab_on: Handle<Image>,
+    pub sidebar: Handle<Image>,
+    pub header: Handle<Image>,
+    pub band: Handle<Image>,
+    pub red_bar: Handle<Image>,
+    pub gray_bar: Handle<Image>,
+    pub line: Handle<Image>,
+    pub track: Handle<Image>,
+    pub handle: Handle<Image>,
+    pub check_on: Handle<Image>,
+    pub check_off: Handle<Image>,
+    pub glyphs: HashMap<Glyph, Handle<Image>>,
+    pub option_marks: HashMap<&'static str, Handle<Image>>,
+    pub scenes: HashMap<Scene, Handle<Image>>,
+    pub dragon: Handle<Image>,
+    pub crab: Handle<Image>,
+    pub undo: Handle<Image>,
 }
+
+pub const WINDOW_GLYPHS: [Glyph; 9] = [
+    Glyph::Gear,
+    Glyph::Info,
+    Glyph::Globe,
+    Glyph::Bubbles,
+    Glyph::Gem,
+    Glyph::Banner,
+    Glyph::Horn,
+    Glyph::Note,
+    Glyph::Swirl,
+];
+
+pub const SCENES: [Scene; 5] = [
+    Scene::Ember,
+    Scene::Dusk,
+    Scene::Grove,
+    Scene::Tide,
+    Scene::Void,
+];
 
 impl Kit {
     pub fn plate(&self, plate: Plate) -> &Handle<Image> {
@@ -235,6 +276,39 @@ pub fn forge(mut commands: Commands, images: Option<ResMut<Assets<Image>>>) {
         pause: bake(&square(icon(Icon::Pause, None))),
         play: bake(&square(icon(Icon::Play, None))),
         eye: bake(&square(glyph(Glyph::Eye, None))),
+        side_tab: bake(&frame::vertical_tab(false)),
+        side_tab_on: bake(&frame::vertical_tab(true)),
+        sidebar: bake(&frame::sidebar()),
+        header: bake(&frame::header_plate()),
+        band: bake(&frame::tab_band()),
+        red_bar: bake(&frame::bar_plate(frame::RED, 24, 20)),
+        gray_bar: bake(&frame::bar_plate(frame::GRAY, 24, 20)),
+        line: bake(&frame::line()),
+        track: bake(&frame::scroll_track()),
+        handle: bake(&frame::scroll_handle()),
+        check_on: bake(&frame::check(true)),
+        check_off: bake(&frame::check(false)),
+        glyphs: WINDOW_GLYPHS
+            .iter()
+            .map(|kind| (*kind, bake(&square(glyph(*kind, None)))))
+            .collect(),
+        option_marks: SETTINGS
+            .iter()
+            .map(|setting| {
+                let pixels = match setting.mark {
+                    Mark::Glyph(kind) => glyph(kind, None),
+                    Mark::Icon(kind) => icon(kind, None),
+                };
+                (setting.id, bake(&square(pixels)))
+            })
+            .collect(),
+        scenes: SCENES
+            .iter()
+            .map(|scene| (*scene, bake(&frame::illustration(*scene, 256, 224))))
+            .collect(),
+        dragon: bake(&square(look_pixels(Look::Creature(Species::Dragon)))),
+        crab: bake(&square(look_pixels(Look::Creature(Species::Crab)))),
+        undo: bake(&square(icon(Icon::Undo, None))),
     });
 }
 

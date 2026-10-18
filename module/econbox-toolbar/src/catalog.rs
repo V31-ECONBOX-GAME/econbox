@@ -1,5 +1,6 @@
 //! Every tab of the bar and every button on it, in the order they are laid out.
 
+use crate::Panel;
 use crate::tabs::TABS;
 use econbox_art::ui::TabMark;
 use econbox_art::{Glyph, Icon, Mark, Stance};
@@ -22,6 +23,7 @@ pub enum Act {
     Pause,
     Clock,
     HideUi,
+    Window(Panel),
     Planned(&'static str),
 }
 
@@ -244,7 +246,10 @@ mod tests {
             if def.ready() {
                 assert!(
                     def.tool().is_some()
-                        || matches!(def.act, Act::Pause | Act::Clock | Act::HideUi),
+                        || matches!(
+                            def.act,
+                            Act::Pause | Act::Clock | Act::HideUi | Act::Window(_)
+                        ),
                     "{}",
                     def.id
                 );

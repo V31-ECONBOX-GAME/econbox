@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 use crate::world::{Land, Survey};
-use econbox_toolbar::KeepSize;
+use econbox_toolbar::UiLayer;
 
 #[derive(Component)]
 struct HudLine(usize);
@@ -20,7 +20,7 @@ impl Plugin for HudPlugin {
 fn spawn(mut commands: Commands) {
     commands
         .spawn((
-            KeepSize,
+            UiLayer::Fixed,
             Node {
                 position_type: PositionType::Absolute,
                 right: Val::Px(11.0),

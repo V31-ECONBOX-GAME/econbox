@@ -3,24 +3,23 @@
 use crate::art::{Kit, sliced};
 use crate::bar::{Scroll, cursor_canvas, px};
 use crate::catalog::Def;
-use crate::layout::{CANVAS_HEIGHT, WINDOW_CANVAS_HEIGHT};
-use crate::size::{KeepSize, kept_scale};
+use crate::options::Options;
+use crate::size::{UiLayer, layer_scale, window_size};
 use crate::{Notice, OpenWindow, UiHidden};
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
 use bevy::text::{Justify, LineBreak};
 
-pub const WINDOW_RATIO: f32 = CANVAS_HEIGHT / WINDOW_CANVAS_HEIGHT;
-const WIDTH: f32 = 113.0 * WINDOW_RATIO;
-const TEXT_WIDTH: f32 = 104.0 * WINDOW_RATIO;
-const HEAD: f32 = 21.6 * WINDOW_RATIO;
-const MARGIN: f32 = 25.0;
+const WIDTH: f32 = 113.0;
+const TEXT_WIDTH: f32 = 104.0;
+const HEAD: f32 = 21.6;
+const MARGIN: f32 = 21.0;
 const MIN_SHOWN: f32 = 0.1;
 const WHEEL_QUIET: f32 = 0.06;
 const LEAVE_DELAY: f32 = 0.08;
 const LEAVE_DRIFT: f32 = 10.0;
-const NAME_SIZE: f32 = 8.0 * WINDOW_RATIO;
-const BODY_SIZE: f32 = 6.0 * WINDOW_RATIO;
+const NAME_SIZE: f32 = 8.0;
+const BODY_SIZE: f32 = 6.0;
 
 pub const TITLE: Color = Color::srgb(1.0, 0.6073, 0.1103);
 pub const BODY: Color = Color::WHITE;
@@ -136,7 +135,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
     commands
         .spawn((
             Card,
-            KeepSize,
+            UiLayer::Tooltips,
             Pickable::IGNORE,
             GlobalZIndex(1000),
             Visibility::Hidden,
@@ -147,8 +146,8 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                 width: px(WIDTH),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                row_gap: px(5.0 * WINDOW_RATIO),
-                padding: UiRect::bottom(px(5.0 * WINDOW_RATIO)),
+                row_gap: px(5.0),
+                padding: UiRect::bottom(px(5.0)),
                 ..default()
             },
             ImageNode {
@@ -259,6 +258,7 @@ pub fn tooltip(
     scroll: Res<Scroll>,
     windows: Query<&Window>,
     hidden: Res<UiHidden>,
+    options: Res<Options>,
     mut hover: ResMut<Hover>,
     mut cards: Query<(&mut Node, &mut Visibility, &ComputedNode), With<Card>>,
     mut titles: Query<&mut Text, (With<CardTitle>, Without<CardBody>, Without<CardFoot>)>,
@@ -284,8 +284,8 @@ pub fn tooltip(
     let Some(window) = windows.iter().next() else {
         return;
     };
-    let scale = kept_scale(Vec2::new(window.width(), window.height()));
-    let screen = Vec2::new(window.width(), window.height()) / scale;
+    let scale = layer_scale(UiLayer::Tooltips, window_size(window), &options);
+    let screen = window_size(window) / scale;
     let cursor = cursor_canvas(window, scale);
 
     if let Some((waited, from)) = hover.leaving {
@@ -315,7 +315,7 @@ pub fn tooltip(
         }
     }
 
-    let showing = hover.visible && !hidden.0 && hover.content.is_some();
+    let showing = hover.visible && !hidden.0 && hover.content.is_some() && options.on("tooltips");
 
     for (mut node, mut visibility, computed) in &mut cards {
         visibility.set_if_neq(if showing {

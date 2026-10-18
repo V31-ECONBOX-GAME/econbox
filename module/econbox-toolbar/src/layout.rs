@@ -4,7 +4,6 @@ use crate::catalog::{Element, Item};
 
 pub const CANVAS_WIDTH: f32 = 285.0;
 pub const CANVAS_HEIGHT: f32 = 500.0;
-pub const WINDOW_CANVAS_HEIGHT: f32 = 420.0;
 
 pub const BUTTON: f32 = 32.0;
 pub const ICON: f32 = 24.0;

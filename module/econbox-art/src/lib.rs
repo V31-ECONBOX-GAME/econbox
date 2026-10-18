@@ -2,6 +2,7 @@
 
 pub mod glyph;
 pub mod ui;
+pub mod window;
 
 pub use glyph::{GLYPHS, Glyph, glyph};
 

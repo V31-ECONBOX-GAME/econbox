@@ -8,6 +8,7 @@ use econbox_toolbar::catalog::{Item, TabId, tab};
 use econbox_toolbar::layout::{
     STRIP_BOTTOM, STRIP_CELL_HEIGHT, STRIP_CELL_WIDTH, TAB_ORIGIN, arrange,
 };
+use econbox_toolbar::size::window_canvas_scale;
 use econbox_toolbar::strip::strip_left;
 use econbox_toolbar::{BarSize, StripOrder, canvas_scale};
 use std::path::PathBuf;
@@ -34,6 +35,7 @@ enum Spot {
     Strip(TabId),
     Middle(f32),
     Right,
+    Window(f32, f32),
 }
 
 #[derive(Resource)]
@@ -57,6 +59,11 @@ fn button_centre(id: TabId, button: &str) -> Vec2 {
 }
 
 fn resolve(spot: Spot, size: Vec2, bar: BarSize, order: &StripOrder) -> Vec2 {
+    if let Spot::Window(x, y) = spot {
+        let scale = window_canvas_scale(size, 100);
+        return Vec2::new(size.x * 0.5 + x * scale, size.y * 0.5 - y * scale);
+    }
+
     let scale = canvas_scale(size, bar);
     let canvas = match spot {
         Spot::Canvas(x, y) => Vec2::new(x, y),
@@ -70,12 +77,86 @@ fn resolve(spot: Spot, size: Vec2, bar: BarSize, order: &StripOrder) -> Vec2 {
         }
         Spot::Middle(y) => Vec2::new(size.x / scale * 0.5, y),
         Spot::Right => Vec2::new(size.x / scale - 5.0, 26.6),
+        Spot::Window(..) => Vec2::ZERO,
     };
 
     Vec2::new(canvas.x * scale, size.y - canvas.y * scale)
 }
 
+fn settings_script() -> Vec<Step> {
+    use Spot::*;
+    use Step::*;
+
+    let tab = |at: f32| Window(-126.5, 54.75 - 22.0 * at);
+    let mut steps = vec![
+        Wait(90),
+        Point(Button(TabId::Main, "settings_button")),
+        Wait(3),
+        Click(Button(TabId::Main, "settings_button")),
+        Wait(40),
+        Shot("s01-other"),
+        Point(Window(-60.0, -58.8)),
+        Wait(20),
+        Shot("s02-hover-settings-door"),
+        Click(Window(-60.0, -58.8)),
+        Wait(40),
+        Shot("s03-settings-everything"),
+        Point(Window(0.0, 0.0)),
+        Wheel(-3.0),
+        Wait(20),
+        Shot("s04-scrolled"),
+        Wheel(-30.0),
+        Wait(20),
+        Shot("s05-bottom"),
+    ];
+
+    for (at, name) in [
+        (1.0, "s06-general"),
+        (2.0, "s07-interface"),
+        (3.0, "s08-graphics"),
+        (4.0, "s09-other-tab"),
+    ] {
+        steps.extend([
+            Point(tab(at)),
+            Wait(3),
+            Click(tab(at)),
+            Wait(20),
+            Shot(name),
+        ]);
+    }
+
+    steps.extend([
+        Point(tab(3.0)),
+        Wait(3),
+        Click(tab(3.0)),
+        Wait(20),
+        Point(Window(-78.0, -124.8)),
+        Wait(3),
+        Click(Window(-78.0, -124.8)),
+        Wait(20),
+        Shot("s09b-fire-off"),
+    ]);
+
+    steps.extend([
+        Point(tab(2.0)),
+        Wait(20),
+        Shot("s10-hover-tab"),
+        Click(Window(-130.85, 110.6)),
+        Wait(40),
+        Shot("s11-back-to-other"),
+        Key(KeyCode::Escape),
+        Wait(40),
+        Shot("s12-closed"),
+        Wait(10),
+    ]);
+    steps
+}
+
 fn script() -> Vec<Step> {
+    if std::env::var("ECONBOX_TOUR_SCRIPT").as_deref() == Ok("settings") {
+        return settings_script();
+    }
+
     use Spot::*;
     use Step::*;
 

@@ -294,7 +294,6 @@ pub fn on_click(
     clocks: Query<Entity, With<ClockButton>>,
     speeds: Query<&SpeedButton>,
     unhides: Query<(), With<UnhideButton>>,
-    mut open: ResMut<OpenWindow>,
     mut controls: Controls,
     mut cues: MessageWriter<Cue>,
 ) {
@@ -320,7 +319,7 @@ pub fn on_click(
     } else if brushes.get(entity).is_ok() {
         click.propagate(false);
         commands.entity(entity).insert(press_pop());
-        open.0 = Some(Panel::Brushes);
+        controls.open.0 = Some(Panel::Brushes);
     } else if clocks.get(entity).is_ok() {
         click.propagate(false);
         commands.entity(entity).insert(press_pop());

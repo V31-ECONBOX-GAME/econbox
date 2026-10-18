@@ -5,7 +5,8 @@ use crate::catalog::{Item, TabId, find, home_of, tab};
 use crate::layout::{TOP_ROW, arrange};
 use crate::sound::Cue;
 use crate::strip::StripOrder;
-use crate::{Controls, KeyCursor, Notice, OpenWindow, Shown, Slots};
+use crate::windows::{Exit, Toward};
+use crate::{Controls, KeyCursor, Notice, Shown, Slots};
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 use econbox_brush::{PRESETS, Undo};
@@ -122,7 +123,7 @@ pub fn hotkeys(
     keys: Res<ButtonInput<KeyCode>>,
     mut controls: Controls,
     mut shown: ResMut<Shown>,
-    mut open: ResMut<OpenWindow>,
+    mut exit: ResMut<Exit>,
     mut slots: ResMut<Slots>,
     mut cursor: ResMut<KeyCursor>,
     mut scroll: ResMut<Scroll>,
@@ -134,8 +135,9 @@ pub fn hotkeys(
     let ctrl = ctrl(&keys);
 
     if keys.just_pressed(KeyCode::Escape) {
-        if open.0.is_some() {
-            open.0 = None;
+        if controls.open.0.is_some() {
+            exit.0 = Toward::Left;
+            controls.open.0 = None;
         } else if controls.hidden.0 {
             controls.hidden.0 = false;
         } else if controls.chosen.0.is_some() {
@@ -148,7 +150,7 @@ pub fn hotkeys(
         return;
     }
 
-    if open.0.is_some() {
+    if controls.open.0.is_some() {
         return;
     }
 
@@ -326,13 +328,12 @@ pub fn wheel(
     keys: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window>,
     scale: Res<UiScale>,
-    open: Res<OpenWindow>,
     mut controls: Controls,
     mut scroll: ResMut<Scroll>,
     mut brush_rest: Local<f32>,
     mut speed_rest: Local<f32>,
 ) {
-    if wheel.delta == Vec2::ZERO || open.0.is_some() {
+    if wheel.delta == Vec2::ZERO || controls.open.0.is_some() {
         return;
     }
 
