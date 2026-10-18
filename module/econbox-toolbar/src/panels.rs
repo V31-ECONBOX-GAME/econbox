@@ -48,11 +48,11 @@ pub fn greenery(map: &TileMap) -> usize {
         .count()
 }
 
-fn label(text: &str, size: f32, color: Color) -> impl Bundle {
+fn label(kit: &Kit, text: &str, size: f32, color: Color) -> impl Bundle {
     (
         Pickable::IGNORE,
         Text::new(text),
-        TextFont::from_font_size(size),
+        kit.text(size),
         TextColor(color),
     )
 }
@@ -120,7 +120,7 @@ pub fn spawn_element(parent: &mut ChildSpawnerCommands, kit: &Kit, element: Elem
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    children![label("World Time", 7.0, CALENDAR)],
+                    children![label(kit, "World Time", 7.0, CALENDAR)],
                 ));
                 panel.spawn((
                     Pickable::IGNORE,
@@ -133,8 +133,8 @@ pub fn spawn_element(parent: &mut ChildSpawnerCommands, kit: &Kit, element: Elem
                         ..default()
                     },
                     children![
-                        (Readout::Year, label("Year 1", 6.5, Color::WHITE)),
-                        (Readout::Month, label("Month 1", 6.5, Color::WHITE)),
+                        (Readout::Year, label(kit, "Year 1", 6.5, Color::WHITE)),
+                        (Readout::Month, label(kit, "Month 1", 6.5, Color::WHITE)),
                     ],
                 ));
                 panel.spawn(bar_track(
@@ -153,7 +153,7 @@ pub fn spawn_element(parent: &mut ChildSpawnerCommands, kit: &Kit, element: Elem
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    children![(Readout::Next, label("", 5.5, NAME))],
+                    children![(Readout::Next, label(kit, "", 5.5, NAME))],
                 ));
                 panel.spawn(bar_track(
                     kit,
@@ -181,7 +181,10 @@ pub fn spawn_element(parent: &mut ChildSpawnerCommands, kit: &Kit, element: Elem
                             justify_content: JustifyContent::SpaceBetween,
                             ..default()
                         },
-                        children![label(name, 6.5, NAME), (readout, label("0", 6.5, VALUE)),],
+                        children![
+                            label(kit, name, 6.5, NAME),
+                            (readout, label(kit, "0", 6.5, VALUE)),
+                        ],
                     ));
                 }
             });

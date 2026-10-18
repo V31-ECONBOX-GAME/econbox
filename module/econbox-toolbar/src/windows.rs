@@ -1,6 +1,6 @@
 //! What every window shares: the frame, sliding in and out, the history behind the back button, scrolling, and the creature on its corner.
 
-use crate::art::{Kit, sliced};
+use crate::art::{Kit, frame_slices, header_slices, sliced};
 use crate::bar::{cursor_canvas, px};
 use crate::motion::{out_back, out_cubic};
 use crate::options::Options;
@@ -13,6 +13,7 @@ use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::picking::events::{PointerClick, PointerPress};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::text::Justify;
 use econbox_art::Glyph;
 use std::f32::consts::PI;
 
@@ -397,39 +398,7 @@ pub fn spawn_frame(
     commands.entity(root).add_child(background);
 
     commands.entity(background).with_children(|frame| {
-        frame.spawn((
-            Pickable::IGNORE,
-            Node {
-                position_type: PositionType::Absolute,
-                left: px(0.0),
-                right: px(0.0),
-                top: px(BODY_TOP),
-                bottom: px(0.0),
-                ..default()
-            },
-            ImageNode {
-                image: kit.window.clone(),
-                image_mode: sliced(12.0),
-                ..default()
-            },
-        ));
-
-        frame.spawn((
-            Pickable::IGNORE,
-            Node {
-                position_type: PositionType::Absolute,
-                left: px((FRAME_WIDTH - HEADER_WIDTH) * 0.5),
-                top: px(0.0),
-                width: px(HEADER_WIDTH),
-                height: px(HEADER_HEIGHT),
-                ..default()
-            },
-            ImageNode {
-                image: kit.header.clone(),
-                image_mode: sliced(8.0),
-                ..default()
-            },
-        ));
+        frame_art(frame, kit);
 
         frame
             .spawn((
@@ -449,7 +418,7 @@ pub fn spawn_frame(
                 title.spawn((
                     Pickable::IGNORE,
                     Text::new(panel.title()),
-                    TextFont::from_font_size(10.0),
+                    kit.text(10.0),
                     TextColor(TITLE),
                     shadow(),
                 ));
@@ -467,7 +436,7 @@ pub fn spawn_frame(
                     align_items: AlignItems::Center,
                     ..default()
                 },
-                ImageNode::new(kit.close_tab.clone()),
+                ImageNode::new(kit.turret.clone()),
             ))
             .with_children(|tab| {
                 tab.spawn((
@@ -491,7 +460,7 @@ pub fn spawn_frame(
                             height: px(28.0),
                             ..default()
                         },
-                        ImageNode::new(kit.close.clone()),
+                        ImageNode::new(kit.cross.clone()),
                     ));
                 });
             });
@@ -514,6 +483,99 @@ pub fn spawn_frame(
     });
 
     (root, background)
+}
+
+pub const SHOULDER_INSET: f32 = 4.0;
+
+pub fn frame_art(frame: &mut ChildSpawnerCommands, kit: &Kit) {
+    frame.spawn((
+        Pickable::IGNORE,
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(SHOULDER_INSET),
+            right: px(SHOULDER_INSET),
+            top: px(BODY_TOP),
+            bottom: px(-(econbox_art::window::FRAME_LIP as f32)),
+            ..default()
+        },
+        ImageNode {
+            image: kit.body.clone(),
+            image_mode: frame_slices(),
+            ..default()
+        },
+    ));
+
+    for flip in [false, true] {
+        frame.spawn((
+            Pickable::IGNORE,
+            Node {
+                position_type: PositionType::Absolute,
+                left: if flip { Val::Auto } else { px(0.0) },
+                right: if flip { px(0.0) } else { Val::Auto },
+                top: px(BODY_TOP),
+                width: px(econbox_art::window::SHOULDER_WIDTH as f32),
+                height: px(econbox_art::window::SHOULDER_HEIGHT as f32),
+                ..default()
+            },
+            ImageNode {
+                image: kit.shoulder.clone(),
+                flip_x: flip,
+                ..default()
+            },
+        ));
+    }
+
+    frame.spawn((
+        Pickable::IGNORE,
+        Node {
+            position_type: PositionType::Absolute,
+            left: px((FRAME_WIDTH - HEADER_WIDTH) * 0.5),
+            top: px(0.0),
+            width: px(HEADER_WIDTH),
+            height: px(HEADER_HEIGHT),
+            ..default()
+        },
+        ImageNode {
+            image: kit.header.clone(),
+            image_mode: header_slices(),
+            ..default()
+        },
+    ));
+}
+
+pub fn label(
+    parent: &mut ChildSpawnerCommands,
+    kit: &Kit,
+    text: &str,
+    size: f32,
+    color: Color,
+    centre: Vec2,
+    area: Vec2,
+) {
+    parent
+        .spawn((
+            Pickable::IGNORE,
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(centre.x - area.x * 0.5),
+                top: px(centre.y - area.y * 0.5),
+                width: px(area.x),
+                height: px(area.y),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+        ))
+        .with_children(|area| {
+            area.spawn((
+                Pickable::IGNORE,
+                Text::new(text),
+                kit.text(size),
+                TextColor(color),
+                TextLayout::justify(Justify::Center),
+                shadow(),
+            ));
+        });
 }
 
 pub fn spawn_view(
@@ -918,6 +980,7 @@ impl Panel {
             Self::Brushes => "Brush",
             Self::Other => "Other",
             Self::Settings => "Settings",
+            Self::Languages => "Languages",
         }
     }
 
@@ -925,13 +988,14 @@ impl Panel {
         match self {
             Self::Brushes => Glyph::Swirl,
             Self::Other | Self::Settings => Glyph::Gear,
+            Self::Languages => Glyph::Bubbles,
         }
     }
 
     pub fn sidebar_button(self) -> Option<&'static str> {
         match self {
             Self::Brushes => None,
-            Self::Other | Self::Settings => Some("settings_button"),
+            Self::Other | Self::Settings | Self::Languages => Some("settings_button"),
         }
     }
 }

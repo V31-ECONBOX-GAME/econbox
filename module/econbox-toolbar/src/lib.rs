@@ -6,6 +6,7 @@ mod brushes;
 pub mod catalog;
 pub mod hovering;
 mod keys;
+pub mod languages;
 pub mod layout;
 mod motion;
 pub mod options;
@@ -58,6 +59,7 @@ pub enum Panel {
     Brushes,
     Other,
     Settings,
+    Languages,
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -163,9 +165,17 @@ pub fn forced_for(def: &Def) -> Option<(Shape, u32)> {
     def.brush.and_then(named)
 }
 
+pub fn canvas_height(window: Vec2) -> f32 {
+    if window.y > window.x {
+        layout::PORTRAIT_HEIGHT
+    } else {
+        layout::CANVAS_HEIGHT
+    }
+}
+
 pub fn canvas_scale(window: Vec2, size: BarSize) -> f32 {
     (window.x / layout::CANVAS_WIDTH)
-        .min(window.y / (layout::CANVAS_HEIGHT * size.factor()))
+        .min(window.y / (canvas_height(window) * size.factor()))
         .max(0.01)
 }
 
@@ -208,6 +218,7 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<hovering::Drifting>()
             .init_resource::<settings::SettingsTab>()
             .init_resource::<settings::SliderDrag>()
+            .init_resource::<languages::Language>()
             .add_message::<Notice>()
             .add_message::<windows::Shown>()
             .add_observer(press::on_click)
@@ -221,6 +232,7 @@ impl Plugin for ToolbarPlugin {
             .add_observer(settings::on_click)
             .add_observer(settings::on_press)
             .add_observer(other::on_click)
+            .add_observer(languages::on_click)
             .add_systems(
                 Startup,
                 (
@@ -232,6 +244,7 @@ impl Plugin for ToolbarPlugin {
                     sidebar::spawn,
                     other::spawn,
                     settings::spawn,
+                    languages::spawn,
                     tips::spawn,
                     pointer::spawn,
                 )
@@ -272,6 +285,7 @@ impl Plugin for ToolbarPlugin {
                         settings::show_tabs,
                         settings::drag_slider,
                         settings::refresh,
+                        languages::refresh,
                     )
                         .chain(),
                     (
@@ -346,6 +360,18 @@ mod tests {
         assert_eq!(
             forced_for(find("wall_order").unwrap()),
             Some((Shape::Square, 0))
+        );
+    }
+
+    #[test]
+    fn a_portrait_window_uses_the_shorter_reference_height() {
+        let tall = Vec2::new(1000.0, 1800.0);
+        assert_eq!(canvas_height(tall), 360.0);
+        assert_eq!(canvas_height(Vec2::new(1800.0, 1000.0)), 500.0);
+        assert_eq!(canvas_scale(tall, BarSize::default()), 1000.0 / 285.0);
+        assert_eq!(
+            canvas_scale(Vec2::new(2000.0, 2200.0), BarSize::default()),
+            2200.0 / 360.0
         );
     }
 

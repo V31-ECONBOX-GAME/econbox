@@ -7,7 +7,7 @@ use crate::press::press_pop;
 use crate::size::UiLayer;
 use crate::sound::Cue;
 use crate::tips::{TITLE, Tip};
-use crate::windows::{Slide, WindowRoot};
+use crate::windows::{Slide, WindowRoot, frame_art, label};
 use crate::{OpenWindow, Panel};
 use bevy::picking::events::PointerClick;
 use bevy::picking::hover::Hovered;
@@ -74,27 +74,18 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                 display: Display::None,
                 ..default()
             },
-            ImageNode {
-                image: kit.window.clone(),
-                image_mode: sliced(12.0),
-                ..default()
-            },
         ))
         .with_children(|window| {
-            window.spawn((
-                Pickable::IGNORE,
-                Node {
-                    position_type: PositionType::Absolute,
-                    left: px(0.0),
-                    right: px(0.0),
-                    top: px(6.6),
-                    justify_content: JustifyContent::Center,
-                    ..default()
-                },
-                Text::new("Brush"),
-                TextFont::from_font_size(10.0),
-                TextColor(TITLE),
-            ));
+            frame_art(window, &kit);
+            label(
+                window,
+                &kit,
+                "Brush",
+                10.0,
+                TITLE,
+                Vec2::new(WIDTH * 0.5, HEIGHT * 0.5 - 146.4),
+                Vec2::new(130.0, 14.0),
+            );
 
             window
                 .spawn((
@@ -109,7 +100,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                         ..default()
                     },
                     ImageNode {
-                        image: kit.close_tab.clone(),
+                        image: kit.turret.clone(),
                         image_mode: NodeImageMode::Stretch,
                         ..default()
                     },
@@ -136,7 +127,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                                 height: px(24.0),
                                 ..default()
                             },
-                            ImageNode::new(kit.close.clone()),
+                            ImageNode::new(kit.cross.clone()),
                         ));
                     });
                 });

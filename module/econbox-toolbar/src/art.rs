@@ -65,10 +65,18 @@ pub struct Kit {
     pub scenes: HashMap<Scene, Handle<Image>>,
     pub dragon: Handle<Image>,
     pub crab: Handle<Image>,
+    pub sheep: Handle<Image>,
     pub undo: Handle<Image>,
+    pub font: Handle<Font>,
+    pub body: Handle<Image>,
+    pub turret: Handle<Image>,
+    pub cross: Handle<Image>,
+    pub knob: Handle<Image>,
+    pub shoulder: Handle<Image>,
+    pub white_glyphs: HashMap<Glyph, Handle<Image>>,
 }
 
-pub const WINDOW_GLYPHS: [Glyph; 9] = [
+pub const WINDOW_GLYPHS: [Glyph; 10] = [
     Glyph::Gear,
     Glyph::Info,
     Glyph::Globe,
@@ -76,6 +84,7 @@ pub const WINDOW_GLYPHS: [Glyph; 9] = [
     Glyph::Gem,
     Glyph::Banner,
     Glyph::Horn,
+    Glyph::Bell,
     Glyph::Note,
     Glyph::Swirl,
 ];
@@ -89,6 +98,10 @@ pub const SCENES: [Scene; 5] = [
 ];
 
 impl Kit {
+    pub fn text(&self, size: f32) -> TextFont {
+        TextFont::from_font_size(size).with_font(self.font.clone())
+    }
+
     pub fn plate(&self, plate: Plate) -> &Handle<Image> {
         match plate {
             Plate::Plain => &self.button,
@@ -161,6 +174,32 @@ pub fn sliced(border: f32) -> NodeImageMode {
     })
 }
 
+pub fn frame_slices() -> NodeImageMode {
+    let border = frame::FRAME_BORDER as f32;
+    NodeImageMode::Sliced(TextureSlicer {
+        border: BorderRect {
+            min_inset: Vec2::new(border, border),
+            max_inset: Vec2::new(border, border + frame::FRAME_LIP as f32),
+        },
+        center_scale_mode: SliceScaleMode::Stretch,
+        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
+        max_corner_scale: 1.0,
+    })
+}
+
+pub fn header_slices() -> NodeImageMode {
+    let step = frame::HEADER_STEP as f32 * 2.0;
+    NodeImageMode::Sliced(TextureSlicer {
+        border: BorderRect {
+            min_inset: Vec2::new(step, 0.0),
+            max_inset: Vec2::new(step, 0.0),
+        },
+        center_scale_mode: SliceScaleMode::Stretch,
+        sides_scale_mode: SliceScaleMode::Stretch,
+        max_corner_scale: 1.0,
+    })
+}
+
 pub fn bar_slices() -> NodeImageMode {
     NodeImageMode::Sliced(TextureSlicer {
         border: BorderRect {
@@ -206,7 +245,13 @@ fn badge(label: &str) -> Picture {
     canvas
 }
 
-pub fn forge(mut commands: Commands, images: Option<ResMut<Assets<Image>>>) {
+pub const FONT: &str = "fonts/Roboto-Bold.ttf";
+
+pub fn forge(
+    mut commands: Commands,
+    images: Option<ResMut<Assets<Image>>>,
+    server: Option<Res<AssetServer>>,
+) {
     let Some(mut images) = images else { return };
     let mut bake = |picture: &Picture| images.add(crisp(picture));
 
@@ -280,9 +325,18 @@ pub fn forge(mut commands: Commands, images: Option<ResMut<Assets<Image>>>) {
         side_tab_on: bake(&frame::vertical_tab(true)),
         sidebar: bake(&frame::sidebar()),
         header: bake(&frame::header_plate()),
+        body: bake(&frame::window_body()),
+        turret: bake(&frame::close_turret()),
+        cross: bake(&frame::small_cross()),
+        knob: bake(&frame::knob()),
+        shoulder: bake(&frame::shoulder()),
+        white_glyphs: WINDOW_GLYPHS
+            .iter()
+            .map(|kind| (*kind, bake(&square(frame::whitened(&glyph(*kind, None))))))
+            .collect(),
         band: bake(&frame::tab_band()),
-        red_bar: bake(&frame::bar_plate(frame::RED, 24, 20)),
-        gray_bar: bake(&frame::bar_plate(frame::GRAY, 24, 20)),
+        red_bar: bake(&frame::rounded_bar(frame::RED, 24, 20)),
+        gray_bar: bake(&frame::rounded_bar(frame::GRAY, 24, 12)),
         line: bake(&frame::line()),
         track: bake(&frame::scroll_track()),
         handle: bake(&frame::scroll_handle()),
@@ -308,7 +362,9 @@ pub fn forge(mut commands: Commands, images: Option<ResMut<Assets<Image>>>) {
             .collect(),
         dragon: bake(&square(look_pixels(Look::Creature(Species::Dragon)))),
         crab: bake(&square(look_pixels(Look::Creature(Species::Crab)))),
+        sheep: bake(&square(look_pixels(Look::Creature(Species::Sheep)))),
         undo: bake(&square(icon(Icon::Undo, None))),
+        font: server.map(|server| server.load(FONT)).unwrap_or_default(),
     });
 }
 

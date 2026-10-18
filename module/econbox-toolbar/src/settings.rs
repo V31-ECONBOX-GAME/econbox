@@ -311,7 +311,7 @@ fn band(list: &mut ChildSpawnerCommands, kit: &Kit, tab: Tab, tabs: &'static [Ta
         band.spawn((
             Pickable::IGNORE,
             Text::new(tab.name()),
-            TextFont::from_font_size(9.0),
+            kit.text(9.0),
             TextColor(TITLE),
         ));
     });
@@ -319,9 +319,7 @@ fn band(list: &mut ChildSpawnerCommands, kit: &Kit, tab: Tab, tabs: &'static [Ta
 
 fn language_button(list: &mut ChildSpawnerCommands, kit: &Kit) {
     let icon = kit.glyphs.get(&Glyph::Bubbles).cloned().unwrap_or_default();
-    let mut tip = Tip::plain("Change Language", "Pick the language of the interface.");
-    tip.foot = Some("Not available yet: needs translations.".to_string());
-    tip.warn = true;
+    let tip = Tip::plain("Change Language", "Pick the language of the interface.");
 
     list.spawn((
         ShownIn(EVERYTHING),
@@ -362,7 +360,7 @@ fn language_button(list: &mut ChildSpawnerCommands, kit: &Kit) {
         button.spawn((
             Pickable::IGNORE,
             Text::new("Change Language"),
-            TextFont::from_font_size(12.0),
+            kit.text(12.0),
             TextColor(Color::WHITE),
         ));
     });
@@ -407,7 +405,7 @@ fn section(
                 ..default()
             },
             Text::new(section.title()),
-            TextFont::from_font_size(10.0),
+            kit.text(10.0),
             TextColor(Color::WHITE),
             shadow(),
         ));
@@ -509,7 +507,7 @@ fn row(grid: &mut ChildSpawnerCommands, kit: &Kit, setting: &'static Setting) {
                             ..default()
                         },
                         Text::new("ON"),
-                        TextFont::from_font_size(8.0),
+                        kit.text(8.0),
                         TextColor(Color::WHITE),
                     ));
                 });
@@ -535,7 +533,7 @@ fn row(grid: &mut ChildSpawnerCommands, kit: &Kit, setting: &'static Setting) {
                     ..default()
                 },
                 Text::new(setting.name),
-                TextFont::from_font_size(9.0),
+                kit.text(9.0),
                 TextColor(Color::WHITE),
                 shadow(),
             ));
@@ -546,7 +544,7 @@ fn row(grid: &mut ChildSpawnerCommands, kit: &Kit, setting: &'static Setting) {
                     RowInk(id),
                     Pickable::IGNORE,
                     Text::new(""),
-                    TextFont::from_font_size(8.0),
+                    kit.text(8.0),
                     TextColor(Color::WHITE),
                     shadow(),
                 ));
@@ -620,7 +618,7 @@ fn row(grid: &mut ChildSpawnerCommands, kit: &Kit, setting: &'static Setting) {
                         ..default()
                     },
                     ImageNode {
-                        image: kit.red_bar.clone(),
+                        image: kit.knob.clone(),
                         image_mode: sliced(5.0),
                         ..default()
                     },
@@ -688,7 +686,7 @@ fn reset_button(grid: &mut ChildSpawnerCommands, kit: &Kit) {
                 inside.spawn((
                     Pickable::IGNORE,
                     Text::new("RESET TO DEFAULT"),
-                    TextFont::from_font_size(8.0),
+                    kit.text(8.0),
                     TextColor(Color::WHITE),
                 ));
             });
@@ -897,6 +895,7 @@ pub fn on_click(
     languages: Query<(), With<LanguageButton>>,
     mut current: ResMut<SettingsTab>,
     mut options: ResMut<Options>,
+    mut open: ResMut<OpenWindow>,
     mut cues: MessageWriter<Cue>,
 ) {
     if click.button != PointerButton::Primary {
@@ -925,6 +924,7 @@ pub fn on_click(
         click.propagate(false);
         cues.write(Cue::Click);
         commands.entity(entity).insert(press_pop());
+        open.0 = Some(Panel::Languages);
     }
 }
 

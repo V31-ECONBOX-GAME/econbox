@@ -107,6 +107,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
     commands
         .spawn((
             Sidebar,
+            Visibility::Hidden,
             UiLayer::Windows,
             GlobalZIndex(550),
             Mover::new(Vec2::new(HIDDEN_X - SHOWN_X, 0.0), false),
@@ -285,7 +286,8 @@ pub fn show(
     open: Res<OpenWindow>,
     windows: Query<&Window>,
     options: Res<Options>,
-    mut sidebars: Query<&mut Mover, With<Sidebar>>,
+    mut sidebars: Query<(&mut Mover, &mut Visibility), With<Sidebar>>,
+    mut selectors: Query<&mut Visibility, (With<Selector>, Without<Sidebar>)>,
 ) {
     let visible = open.0.is_some()
         && windows.iter().next().is_none_or(|window| {
@@ -298,17 +300,34 @@ pub fn show(
             !too_close(physical, scale, options.int("ui_size_windows"))
         });
 
-    for mut mover in &mut sidebars {
+    for (mut mover, mut seen) in &mut sidebars {
         mover.show(visible);
+
+        let gone = !mover.visible && mover.settled();
+        seen.set_if_neq(if gone {
+            Visibility::Hidden
+        } else {
+            Visibility::Inherited
+        });
+
+        if gone {
+            for mut selector in &mut selectors {
+                selector.set_if_neq(Visibility::Hidden);
+            }
+        }
     }
 }
 
 pub fn select(
     open: Res<OpenWindow>,
+    sidebars: Query<&Mover, With<Sidebar>>,
     buttons: Query<(&SidebarButton, &UiGlobalTransform, &ComputedNode)>,
     mut selectors: Query<(&mut Node, &mut Visibility, &ComputedNode), With<Selector>>,
 ) {
-    let target = open.0.and_then(Panel::sidebar_button);
+    let shown = sidebars
+        .iter()
+        .any(|mover| mover.visible || !mover.settled());
+    let target = open.0.and_then(Panel::sidebar_button).filter(|_| shown);
 
     for (mut node, mut visibility, own) in &mut selectors {
         let found = target.and_then(|id| {

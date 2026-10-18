@@ -192,7 +192,7 @@ fn pictures(kit: &Kit, panel: Panel) -> Vec<Handle<Image>> {
                 .map(|(at, _)| kit.brushes[at].0.clone())
                 .collect()
         }
-        Panel::Other | Panel::Settings => kit
+        Panel::Other | Panel::Settings | Panel::Languages => kit
             .glyphs
             .get(&panel.glyph())
             .cloned()

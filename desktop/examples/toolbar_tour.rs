@@ -26,6 +26,7 @@ enum Step {
     Up(KeyCode),
     Wheel(f32),
     Shot(&'static str),
+    Resize(f32, f32),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -91,7 +92,7 @@ fn settings_script() -> Vec<Step> {
     let mut steps = vec![
         Wait(90),
         Point(Button(TabId::Main, "settings_button")),
-        Wait(3),
+        Wait(10),
         Click(Button(TabId::Main, "settings_button")),
         Wait(40),
         Shot("s01-other"),
@@ -118,7 +119,7 @@ fn settings_script() -> Vec<Step> {
     ] {
         steps.extend([
             Point(tab(at)),
-            Wait(3),
+            Wait(10),
             Click(tab(at)),
             Wait(20),
             Shot(name),
@@ -127,14 +128,23 @@ fn settings_script() -> Vec<Step> {
 
     steps.extend([
         Point(tab(3.0)),
-        Wait(3),
+        Wait(10),
         Click(tab(3.0)),
         Wait(20),
         Point(Window(-78.0, -124.8)),
-        Wait(3),
+        Wait(10),
         Click(Window(-78.0, -124.8)),
         Wait(20),
         Shot("s09b-fire-off"),
+        Point(tab(2.0)),
+        Wait(10),
+        Click(tab(2.0)),
+        Wait(20),
+        Point(Window(0.0, -148.7)),
+        Wait(10),
+        Drag(Window(0.0, -148.7), Window(60.0, -148.7)),
+        Wait(30),
+        Shot("s09c-bar-size-dragged"),
     ]);
 
     steps.extend([
@@ -144,9 +154,20 @@ fn settings_script() -> Vec<Step> {
         Click(Window(-130.85, 110.6)),
         Wait(40),
         Shot("s11-back-to-other"),
+        Point(Window(60.0, -58.8)),
+        Wait(10),
+        Click(Window(60.0, -58.8)),
+        Wait(40),
+        Shot("s12-languages"),
+        Resize(640.0, 1080.0),
+        Wait(60),
+        Shot("s13-narrow"),
+        Resize(1280.0, 720.0),
+        Wait(60),
+        Shot("s14-wide-again"),
         Key(KeyCode::Escape),
         Wait(40),
-        Shot("s12-closed"),
+        Shot("s15-closed"),
         Wait(10),
     ]);
     steps
@@ -469,6 +490,9 @@ fn drive(
                     window: entity,
                 });
             }
+        }
+        Step::Resize(width, height) => {
+            window.resolution.set(width, height);
         }
         Step::Shot(name) => {
             let path = tour.out.join(format!("{name}.png"));

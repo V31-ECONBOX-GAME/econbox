@@ -116,32 +116,287 @@ pub fn sidebar() -> Picture {
     out
 }
 
-pub fn header_plate() -> Picture {
-    let (width, height) = (40, 22);
+pub const FRAME_BORDER: u32 = 20;
+pub const FRAME_LIP: u32 = 3;
+pub const FRAME_SIZE: u32 = FRAME_BORDER * 2 + 8;
+
+const KEY: [&str; 8] = [
+    "#######.", "#.....#.", "#.###.#.", "#.#.#.#.", "#.#...#.", "#.#####.", "#.......", "########",
+];
+
+fn keyed(across: u32, along: u32) -> bool {
+    KEY[(along % 8) as usize].as_bytes()[(across % 8) as usize] == b'#'
+}
+
+fn stone(face: [u8; 3], x: u32, y: u32, seed: u32) -> Rgba {
+    let by = match hash(x, y, seed) % 29 {
+        0 => 0.9,
+        1 => 1.07,
+        2 => 0.95,
+        _ => 1.0,
+    };
+    tone(face, by)
+}
+
+pub fn window_body() -> Picture {
+    let width = FRAME_SIZE;
+    let body = FRAME_SIZE;
+    let height = body + FRAME_LIP;
     let mut out = Picture::blank(width, height);
     let face = BAR_FACE;
 
     for y in 0..height {
         for x in 0..width {
-            let side = x.min(width - 1 - x);
-            if y < 4 && side < 4 - y {
+            if y >= body {
+                let lip = y - body;
+                if x > lip && x < width - 1 - lip {
+                    let color = match lip {
+                        0 => rgb(0x7a3a22),
+                        1 => rgb(0x9a5030),
+                        _ => rgb(0x5a2a18),
+                    };
+                    out.set(x, y, color);
+                }
                 continue;
             }
 
-            let edge = side.min(y);
+            if corner_cut(x, y, width, body, 2) {
+                continue;
+            }
+
+            let from = [x, y, width - 1 - x, body - 1 - y];
+            let edge = *from.iter().min().unwrap_or(&0);
+            let side = from.iter().position(|d| *d == edge).unwrap_or(0);
+            let along = if side == 0 || side == 2 { y } else { x };
+
             let color = match edge {
-                0 => rgb(0x22261f),
-                1 if y == 1 || x == 1 => rgb(0x8a9480),
-                1 => tone(face, 0.7),
-                _ if y == 6 || y == 16 => tone(face, 0.86),
-                _ if y > 6 && y < 16 && (x + y) % 5 == 0 => tone(face, 0.94),
-                _ => tone(face, 1.0),
+                0 => rgb(0x1d211b),
+                1 if side <= 1 => rgb(0x8d977f),
+                1 => rgb(0x2c3229),
+                2..=3 => stone(face, x, y, 3),
+                4..=11 if side == 0 || side == 2 => {
+                    let across = edge - 4;
+                    if keyed(across, along) {
+                        tone(face, 0.88)
+                    } else if across > 0 && keyed(across - 1, along) {
+                        tone(face, 1.04)
+                    } else {
+                        stone(face, x, y, 5)
+                    }
+                }
+                4..=16 => stone(face, x, y, 7),
+                17 => rgb(0x2a2f26),
+                18 => rgb(0x4e5644),
+                _ => rgb(0x464d40),
             };
             out.set(x, y, color);
         }
     }
 
     out
+}
+
+pub const SHOULDER_WIDTH: u32 = 21;
+pub const SHOULDER_HEIGHT: u32 = 74;
+
+pub fn shoulder() -> Picture {
+    let (width, height) = (SHOULDER_WIDTH, SHOULDER_HEIGHT);
+    let mut out = Picture::blank(width, height);
+    let face = BAR_FACE;
+
+    for y in 0..height {
+        for x in 0..width {
+            if corner_cut(x, y, width * 2, height, 2) {
+                continue;
+            }
+
+            let color = if x == 0 || y == 0 || y == height - 1 {
+                rgb(0x1d211b)
+            } else if x == 1 || y == 1 {
+                rgb(0x8d977f)
+            } else if y == height - 2 {
+                rgb(0x2c3229)
+            } else {
+                stone(face, x, y, 17)
+            };
+            out.set(x, y, color);
+        }
+    }
+
+    out
+}
+
+pub const HEADER_WIDTH: u32 = 48;
+pub const HEADER_HEIGHT: u32 = 26;
+pub const HEADER_STEP: u32 = 7;
+
+fn header_cut(y: u32) -> u32 {
+    if y < 4 {
+        6
+    } else if y < 8 {
+        3
+    } else {
+        0
+    }
+}
+
+pub fn header_plate() -> Picture {
+    let (width, height) = (HEADER_WIDTH, HEADER_HEIGHT);
+    let mut out = Picture::blank(width, height);
+    let face = BAR_FACE;
+    let inside = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
+            return false;
+        }
+        let cut = header_cut(y as u32) as i32;
+        x >= cut && x < width as i32 - cut
+    };
+
+    for y in 0..height {
+        for x in 0..width {
+            let (ix, iy) = (x as i32, y as i32);
+            if !inside(ix, iy) {
+                continue;
+            }
+
+            let rim = !inside(ix - 1, iy) || !inside(ix + 1, iy) || !inside(ix, iy - 1);
+            let lit = !inside(ix - 1, iy - 1) || !inside(ix, iy - 2) || !inside(ix - 2, iy);
+            let color = if rim {
+                rgb(0x1d211b)
+            } else if lit {
+                rgb(0x8d977f)
+            } else if y == 12 || y == height - 3 {
+                tone(face, 0.78)
+            } else if y == 13 || y == height - 2 {
+                tone(face, 1.1)
+            } else {
+                stone(shade(face, 0.76), x, y, 11)
+            };
+            out.set(x, y, color);
+        }
+    }
+
+    out
+}
+
+pub const TURRET_WIDTH: u32 = 40;
+pub const TURRET_HEIGHT: u32 = 36;
+
+pub fn close_turret() -> Picture {
+    let (width, height) = (TURRET_WIDTH, TURRET_HEIGHT);
+    let mut out = Picture::blank(width, height);
+    let face = BAR_FACE;
+    let solid = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
+            return false;
+        }
+        if y < 6 {
+            let merlon = [(0, 11), (15, 25), (29, 40)];
+            return merlon.iter().any(|(a, b)| x >= *a && x < *b);
+        }
+        true
+    };
+
+    for y in 0..height {
+        for x in 0..width {
+            let (ix, iy) = (x as i32, y as i32);
+            if !solid(ix, iy) || corner_cut(x, y, width, height, 2) {
+                continue;
+            }
+
+            let rim =
+                !solid(ix - 1, iy) || !solid(ix + 1, iy) || !solid(ix, iy - 1) || y == height - 1;
+            let lit = !solid(ix - 1, iy - 1) || !solid(ix, iy - 2);
+            let dark = x == width - 2 || y == height - 2;
+            let color = if rim {
+                rgb(0x1d211b)
+            } else if lit {
+                rgb(0x8d977f)
+            } else if dark {
+                rgb(0x2c3229)
+            } else {
+                stone(face, x, y, 13)
+            };
+            out.set(x, y, color);
+        }
+    }
+
+    out
+}
+
+pub fn small_cross() -> Picture {
+    let size = 28;
+    let mut out = Picture::blank(size, size);
+    let ink = rgb(0xe8392c);
+    let dark = rgb(0x8f1d15);
+
+    for step in 0..10 {
+        for (x, y) in [(9 + step, 9 + step), (18 - step, 9 + step)] {
+            out.set(x, y + 1, dark);
+            out.set(x + 1, y + 1, dark);
+        }
+    }
+    for step in 0..10 {
+        for (x, y) in [(9 + step, 9 + step), (18 - step, 9 + step)] {
+            out.set(x, y, ink);
+            out.set(x + 1, y, ink);
+        }
+    }
+
+    out
+}
+
+pub fn rounded_bar(face: [u8; 3], width: u32, height: u32) -> Picture {
+    let mut out = Picture::blank(width, height);
+
+    for y in 0..height {
+        for x in 0..width {
+            if corner_cut(x, y, width, height, 3) {
+                continue;
+            }
+
+            let edge = ring(x, y, width, height);
+            let color = match edge {
+                0 => tone(face, 0.38),
+                1 if y == 1 => tone(face, 1.32),
+                _ if y + 2 >= height => tone(face, 0.72),
+                _ if y < height / 2 => tone(face, 1.05),
+                _ => tone(face, 0.94),
+            };
+            out.set(x, y, color);
+        }
+    }
+
+    out
+}
+
+pub fn knob() -> Picture {
+    let (width, height) = (12, 20);
+    let mut out = rounded_bar(RED, width, height);
+
+    for y in 2..height - 3 {
+        out.set(2, y, tone(RED, 1.2));
+    }
+
+    out
+}
+
+pub fn whitened(pixels: &[Rgba]) -> Vec<Rgba> {
+    pixels
+        .iter()
+        .map(|px| {
+            if px[3] == 0 {
+                *px
+            } else {
+                let light = (u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2])) / 3;
+                match light {
+                    0..70 => [0, 0, 0, 0],
+                    70..140 => [0xdc, 0xdc, 0xdc, px[3]],
+                    _ => [0xff, 0xff, 0xff, px[3]],
+                }
+            }
+        })
+        .collect()
 }
 
 pub fn tab_band() -> Picture {
@@ -448,6 +703,31 @@ mod tests {
         let idle = vertical_tab(false).get(10, 10);
         assert!(red[0] > red[1] && red[0] > red[2]);
         assert!(idle[1] >= idle[0]);
+    }
+
+    #[test]
+    fn the_frame_tiles_its_key_pattern_and_keeps_a_lip() {
+        let frame = window_body();
+        assert_eq!(frame.width, FRAME_SIZE);
+        assert_eq!(frame.height, FRAME_SIZE + FRAME_LIP);
+        let side = FRAME_SIZE - FRAME_BORDER * 2;
+        assert_eq!(side % 8, 0);
+        assert_eq!(frame.get(5, 20), frame.get(5, 28));
+        assert!(frame.get(FRAME_SIZE / 2, FRAME_SIZE + 1)[0] > 0x80);
+    }
+
+    #[test]
+    fn the_turret_has_three_merlons_and_the_cross_stays_small() {
+        let turret = close_turret();
+        assert!(turret.get(5, 2)[3] > 0);
+        assert_eq!(turret.get(12, 2)[3], 0);
+        assert!(turret.get(20, 2)[3] > 0);
+
+        let cross = small_cross();
+        let inked: Vec<u32> = (0..28)
+            .filter(|x| (0..28).any(|y| cross.get(*x, y)[3] > 0))
+            .collect();
+        assert!(inked.len() <= 12);
     }
 
     #[test]

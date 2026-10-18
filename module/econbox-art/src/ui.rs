@@ -438,9 +438,9 @@ pub fn inset_panel() -> Picture {
 
             let ring = x.min(y).min(size - 1 - x).min(size - 1 - y);
             let color = match ring {
-                0 => rgb(0x1e221c),
-                1 if x == 1 || y == 1 => rgb(0x262b24),
-                _ => rgb(0x30362c),
+                0 => rgb(0x262a22),
+                1 if x == 1 || y == 1 => rgb(0x31352c),
+                _ => rgb(0x3d4036),
             };
             out.set(x, y, color);
         }

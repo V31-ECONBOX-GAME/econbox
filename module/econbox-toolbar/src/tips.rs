@@ -177,7 +177,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                     CardTitle,
                     Pickable::IGNORE,
                     Text::new(""),
-                    TextFont::from_font_size(NAME_SIZE),
+                    kit.text(NAME_SIZE),
                     TextColor(TITLE),
                     wrapped(),
                 ));
@@ -191,7 +191,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                     ..default()
                 },
                 Text::new(""),
-                TextFont::from_font_size(BODY_SIZE),
+                kit.text(BODY_SIZE),
                 TextColor(BODY),
                 wrapped(),
             ));
@@ -217,7 +217,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
                     ..default()
                 },
                 Text::new(""),
-                TextFont::from_font_size(BODY_SIZE),
+                kit.text(BODY_SIZE),
                 TextColor(FOOT),
                 wrapped(),
             ));
@@ -241,7 +241,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
             ..default()
         },
         Text::new(""),
-        TextFont::from_font_size(9.0),
+        kit.text(9.0),
         TextColor(Color::NONE),
         TextShadow {
             offset: Vec2::new(1.0, 1.0),
