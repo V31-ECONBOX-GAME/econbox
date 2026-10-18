@@ -6,7 +6,6 @@ use crate::catalog::Element;
 use bevy::prelude::*;
 use econbox_clock::WorldClock;
 use econbox_creature::{Census, Kind};
-use econbox_tile::Overlay;
 use econbox_tilemap::TileMap;
 
 pub const MONTH: f32 = 6.0;
@@ -45,12 +44,7 @@ pub fn calendar(elapsed: f32) -> (u32, u32, f32, f32) {
 pub fn greenery(map: &TileMap) -> usize {
     map.tiles
         .iter()
-        .filter(|tile| {
-            matches!(
-                tile.overlay,
-                Overlay::Grass | Overlay::Jungle | Overlay::Enchanted | Overlay::Pumpkin
-            )
-        })
+        .filter(|tile| tile.overlay.is_living())
         .count()
 }
 
@@ -248,7 +242,7 @@ pub fn refresh(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use econbox_tile::{Ground, Tile};
+    use econbox_tile::{Flora, Ground, Overlay, Tile};
 
     #[test]
     fn the_calendar_rolls_months_into_years() {
@@ -264,7 +258,15 @@ mod tests {
         let mut map = TileMap::filled(4, 4, Tile::new(Ground::SoilLow, Overlay::Grass));
         map.set(0, 0, Tile::new(Ground::SoilLow, Overlay::Infernal));
         map.set(1, 0, Tile::bare(Ground::Sand));
+        map.set(2, 0, Tile::new(Ground::SoilLow, Overlay::Blight));
+        map.set(3, 0, Tile::new(Ground::SoilLow, Overlay::Void));
+        map.set(0, 1, Tile::new(Ground::SoilLow, Overlay::Candy));
+        map.set(
+            1,
+            1,
+            Tile::new(Ground::SoilHigh, Overlay::Maple).with_flora(Some(Flora::Tree)),
+        );
 
-        assert_eq!(greenery(&map), 14);
+        assert_eq!(greenery(&map), 12);
     }
 }

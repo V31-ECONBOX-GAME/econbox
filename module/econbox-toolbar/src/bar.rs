@@ -1,11 +1,12 @@
 //! The bar itself: its plating, the tab strip, one scrolling track per tab, and the edge arrows.
 
 use crate::art::{Kit, bar_slices};
-use crate::catalog::{Item, STRIP, TabId, tab};
+use crate::catalog::{Item, TabId, tab};
 use crate::layout::*;
 use crate::motion::{Curve, Mover, Pop, Tilt, in_out_circ, smooth_damp};
 use crate::panels;
 use crate::press::{BackButton, ClockBadge, PauseIcon, Slot, SlotFrame, SlotIcon};
+use crate::strip::{Cell, STRIP_WIDTH, StripOrder};
 use crate::tabs::TABS;
 use crate::{KeyCursor, OpenWindow, Shown, UiHidden};
 use bevy::picking::hover::Hovered;
@@ -273,7 +274,12 @@ pub fn badge_node() -> Node {
     }
 }
 
-pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>, mut scroll: ResMut<Scroll>) {
+pub fn spawn(
+    mut commands: Commands,
+    kit: Option<Res<Kit>>,
+    order: Res<StripOrder>,
+    mut scroll: ResMut<Scroll>,
+) {
     let Some(kit) = kit else { return };
     let shown = TabId::default();
 
@@ -362,25 +368,30 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>, mut scroll: ResMut<S
                 });
             }
 
-            let strip_width = STRIP_CELL_WIDTH * STRIP.len() as f32;
             bar.spawn(Node {
                 position_type: PositionType::Absolute,
                 left: Val::Percent(50.0),
-                margin: UiRect::left(px(-strip_width * 0.5)),
+                margin: UiRect::left(px(-STRIP_WIDTH * 0.5)),
                 bottom: px(STRIP_BOTTOM),
-                width: px(strip_width),
+                width: px(STRIP_WIDTH),
                 height: px(STRIP_CELL_HEIGHT),
-                flex_direction: FlexDirection::Row,
                 ..default()
             })
             .with_children(|strip| {
-                for id in STRIP {
+                for id in order.0 {
+                    let home = order.home(id);
+
                     strip
                         .spawn((
                             StripTab(id),
+                            Cell::at(home),
+                            ZIndex(0),
                             Hovered::default(),
                             UiTransform::default(),
                             Node {
+                                position_type: PositionType::Absolute,
+                                left: px(home),
+                                top: px(0.0),
                                 width: px(STRIP_CELL_WIDTH),
                                 height: px(STRIP_CELL_HEIGHT),
                                 justify_content: JustifyContent::Center,

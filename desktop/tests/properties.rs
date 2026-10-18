@@ -1,5 +1,7 @@
 use desktop::config::logs;
-use desktop::config::properties::{self, ApplicationProperties, LoggingProperties};
+use desktop::config::properties::{
+    self, ApplicationProperties, LoggingProperties, ToolbarProperties,
+};
 use econbox::config::{dir, load_from};
 use std::path::Path;
 
@@ -17,6 +19,13 @@ fn logging(profile: &str) -> LoggingProperties {
         .expect("properties load")
         .get(properties::LOGGING)
         .expect("logging section")
+}
+
+fn toolbar(profile: &str) -> ToolbarProperties {
+    load_from(&dir(), properties::BASE_NAME, profile)
+        .expect("properties load")
+        .get(properties::TOOLBAR)
+        .expect("toolbar section")
 }
 
 #[test]
@@ -59,6 +68,15 @@ fn every_profile_layer_parses() {
                 .exists()
         );
         assert!(load_from(&dir(), properties::BASE_NAME, profile).is_ok());
+    }
+}
+
+#[test]
+fn the_power_bar_starts_at_full_size_in_every_profile() {
+    assert_eq!(toolbar("none"), ToolbarProperties::default());
+
+    for profile in PROFILES {
+        assert_eq!(toolbar(profile).size, 100);
     }
 }
 

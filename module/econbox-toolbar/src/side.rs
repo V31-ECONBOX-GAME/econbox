@@ -5,6 +5,8 @@ use crate::bar::{BarRoot, badge_node, icon_node, px};
 use crate::layout::{BUTTON, ICON};
 use crate::motion::Mover;
 use crate::press::{hover_pop, press_pop};
+use crate::size::Preview;
+use crate::sound::Cue;
 use crate::tips::Tip;
 use crate::{Chosen, Controls, OpenWindow, Panel, SpeedRow, UiHidden};
 use bevy::picking::events::PointerClick;
@@ -294,12 +296,22 @@ pub fn on_click(
     unhides: Query<(), With<UnhideButton>>,
     mut open: ResMut<OpenWindow>,
     mut controls: Controls,
+    mut cues: MessageWriter<Cue>,
 ) {
     if click.button != PointerButton::Primary {
         return;
     }
 
     let entity = click.entity;
+    let pressed = cancels.contains(entity)
+        || brushes.contains(entity)
+        || clocks.contains(entity)
+        || speeds.contains(entity)
+        || unhides.contains(entity);
+
+    if pressed {
+        cues.write(Cue::Click);
+    }
 
     if cancels.get(entity).is_ok() {
         click.propagate(false);
@@ -333,6 +345,7 @@ pub fn show(
     open: Res<OpenWindow>,
     hidden: Res<UiHidden>,
     brush: Res<Brush>,
+    preview: Res<Preview>,
     kit: Option<Res<Kit>>,
     mut speeds: ResMut<SpeedRow>,
     mut clock: ResMut<WorldClock>,
@@ -365,7 +378,7 @@ pub fn show(
     }
 
     for mut mover in &mut bar {
-        mover.show(!window && !hidden.0);
+        mover.show((!window && !hidden.0) || preview.ghost);
     }
 
     for mut node in &mut rows {

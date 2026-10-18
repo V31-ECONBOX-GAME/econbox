@@ -11,11 +11,12 @@ pub enum Ground {
     SoilHigh,
     Hills,
     Mountains,
+    Summit,
     Lava2,
     Lava3,
 }
 
-pub const GROUNDS: [Ground; 10] = [
+pub const GROUNDS: [Ground; 11] = [
     Ground::DeepOcean,
     Ground::CloseOcean,
     Ground::ShallowWaters,
@@ -24,6 +25,7 @@ pub const GROUNDS: [Ground; 10] = [
     Ground::SoilHigh,
     Ground::Hills,
     Ground::Mountains,
+    Ground::Summit,
     Ground::Lava2,
     Ground::Lava3,
 ];
@@ -48,8 +50,19 @@ impl Ground {
         matches!(self, Self::Sand | Self::SoilLow | Self::SoilHigh)
     }
 
+    pub fn takes_ore(self) -> bool {
+        matches!(self, Self::Hills | Self::Mountains)
+    }
+
     pub fn is_high(self) -> bool {
-        matches!(self, Self::SoilHigh | Self::Hills | Self::Mountains)
+        matches!(
+            self,
+            Self::SoilHigh | Self::Hills | Self::Mountains | Self::Summit
+        )
+    }
+
+    pub fn takes_wall(self) -> bool {
+        self.is_land() && !self.is_lava()
     }
 
     pub fn elevation(self) -> u8 {
@@ -62,6 +75,7 @@ impl Ground {
             Self::SoilHigh => 5,
             Self::Hills => 6,
             Self::Mountains => 7,
+            Self::Summit => 8,
             Self::Lava2 => 4,
             Self::Lava3 => 5,
         }
@@ -77,6 +91,7 @@ impl Ground {
             Self::SoilHigh => [0xb6, 0x6f, 0x3a],
             Self::Hills => [0x5b, 0x5e, 0x5c],
             Self::Mountains => [0x41, 0x45, 0x45],
+            Self::Summit => [0x33, 0x33, 0x33],
             Self::Lava2 => [0xff, 0xac, 0x00],
             Self::Lava3 => [0xff, 0xde, 0x00],
         }
@@ -92,6 +107,7 @@ impl Ground {
             Self::SoilHigh => "soil_high",
             Self::Hills => "hills",
             Self::Mountains => "mountains",
+            Self::Summit => "summit",
             Self::Lava2 => "lava2",
             Self::Lava3 => "lava3",
         }
@@ -107,32 +123,83 @@ pub enum Overlay {
     Enchanted,
     Infernal,
     Pumpkin,
+    Savanna,
+    Birch,
+    Maple,
+    Swamp,
+    Blight,
+    Mushroom,
+    Candy,
+    Garlic,
+    Lemon,
+    Desert,
+    Rockland,
+    Crystal,
+    Frost,
+    Flower,
+    Starlight,
+    Void,
+    Paradox,
+    Clover,
 }
 
-pub const OVERLAYS: [Overlay; 6] = [
+pub const OVERLAYS: [Overlay; 24] = [
     Overlay::Bare,
     Overlay::Grass,
     Overlay::Jungle,
     Overlay::Enchanted,
     Overlay::Infernal,
     Overlay::Pumpkin,
+    Overlay::Savanna,
+    Overlay::Birch,
+    Overlay::Maple,
+    Overlay::Swamp,
+    Overlay::Blight,
+    Overlay::Mushroom,
+    Overlay::Candy,
+    Overlay::Garlic,
+    Overlay::Lemon,
+    Overlay::Desert,
+    Overlay::Rockland,
+    Overlay::Crystal,
+    Overlay::Frost,
+    Overlay::Flower,
+    Overlay::Starlight,
+    Overlay::Void,
+    Overlay::Paradox,
+    Overlay::Clover,
 ];
 
 impl Overlay {
-    pub fn color(self, high: bool) -> Option<[u8; 3]> {
-        Some(match (self, high) {
-            (Self::Bare, _) => return None,
-            (Self::Grass, false) => [0x7e, 0xaf, 0x46],
-            (Self::Grass, true) => [0x5f, 0x83, 0x3c],
-            (Self::Jungle, false) => [0x46, 0xa0, 0x52],
-            (Self::Jungle, true) => [0x1f, 0x70, 0x20],
-            (Self::Enchanted, false) => [0x8c, 0xdc, 0x6a],
-            (Self::Enchanted, true) => [0x76, 0xb1, 0x53],
-            (Self::Infernal, false) => [0x9c, 0x36, 0x26],
-            (Self::Infernal, true) => [0x68, 0x37, 0x2d],
-            (Self::Pumpkin, false) => [0x8f, 0x93, 0x39],
-            (Self::Pumpkin, true) => [0x69, 0x6c, 0x02],
-        })
+    pub const fn color(self, high: bool) -> Option<[u8; 3]> {
+        let (low, top) = match self {
+            Self::Bare => return None,
+            Self::Grass => ([0x7e, 0xaf, 0x46], [0x5f, 0x83, 0x3c]),
+            Self::Jungle => ([0x46, 0xa0, 0x52], [0x1f, 0x70, 0x20]),
+            Self::Enchanted => ([0x8c, 0xdc, 0x6a], [0x76, 0xb1, 0x53]),
+            Self::Infernal => ([0x9c, 0x36, 0x26], [0x68, 0x37, 0x2d]),
+            Self::Pumpkin => ([0x8f, 0x93, 0x39], [0x69, 0x6c, 0x02]),
+            Self::Savanna => ([0xc3, 0xb0, 0x52], [0xa0, 0x8c, 0x3c]),
+            Self::Birch => ([0xb4, 0xcc, 0x8a], [0x94, 0xac, 0x6e]),
+            Self::Maple => ([0xcf, 0x7a, 0x3a], [0xa8, 0x5a, 0x2a]),
+            Self::Swamp => ([0x56, 0x70, 0x4a], [0x3f, 0x56, 0x38]),
+            Self::Blight => ([0x6f, 0x4a, 0x64], [0x52, 0x34, 0x48]),
+            Self::Mushroom => ([0xa8, 0x66, 0x5a], [0x7f, 0x4a, 0x42]),
+            Self::Candy => ([0xee, 0x9f, 0xcf], [0xd2, 0x7c, 0xb2]),
+            Self::Garlic => ([0xd9, 0xd2, 0xb4], [0xbd, 0xb5, 0x94]),
+            Self::Lemon => ([0xd8, 0xd2, 0x4c], [0xb2, 0xad, 0x32]),
+            Self::Desert => ([0xe3, 0xc5, 0x85], [0xc9, 0xa8, 0x66]),
+            Self::Rockland => ([0x8e, 0x8f, 0x86], [0x72, 0x73, 0x6b]),
+            Self::Crystal => ([0x7f, 0xd8, 0xde], [0x5c, 0xb4, 0xc0]),
+            Self::Frost => ([0xd6, 0xea, 0xf2], [0xb4, 0xcf, 0xdc]),
+            Self::Flower => ([0xa6, 0xd0, 0x5e], [0x86, 0xb0, 0x48]),
+            Self::Starlight => ([0x8f, 0x86, 0xe0], [0x6f, 0x66, 0xc0]),
+            Self::Void => ([0x3f, 0x36, 0x56], [0x2a, 0x23, 0x40]),
+            Self::Paradox => ([0xc4, 0x6a, 0xd8], [0x9e, 0x4c, 0xb4]),
+            Self::Clover => ([0x3f, 0xae, 0x5a], [0x2c, 0x8a, 0x44]),
+        };
+
+        Some(if high { top } else { low })
     }
 
     pub fn name(self) -> &'static str {
@@ -143,17 +210,201 @@ impl Overlay {
             Self::Enchanted => "enchanted",
             Self::Infernal => "infernal",
             Self::Pumpkin => "pumpkin",
+            Self::Savanna => "savanna",
+            Self::Birch => "birch",
+            Self::Maple => "maple",
+            Self::Swamp => "swamp",
+            Self::Blight => "corrupted",
+            Self::Mushroom => "mushroom",
+            Self::Candy => "candy",
+            Self::Garlic => "garlic",
+            Self::Lemon => "lemon",
+            Self::Desert => "desert",
+            Self::Rockland => "rocklands",
+            Self::Crystal => "crystal",
+            Self::Frost => "permafrost",
+            Self::Flower => "flower",
+            Self::Starlight => "celestial",
+            Self::Void => "singularity",
+            Self::Paradox => "paradox",
+            Self::Clover => "clover",
         }
     }
 
     pub fn fertility(self) -> f32 {
         match self {
             Self::Grass => 1.0,
+            Self::Clover => 0.9,
             Self::Jungle => 0.85,
+            Self::Birch => 0.8,
+            Self::Maple => 0.75,
             Self::Enchanted => 0.7,
+            Self::Flower => 0.7,
+            Self::Lemon => 0.65,
+            Self::Candy => 0.6,
+            Self::Savanna => 0.55,
+            Self::Starlight => 0.55,
+            Self::Swamp => 0.5,
+            Self::Garlic => 0.5,
+            Self::Mushroom => 0.45,
             Self::Pumpkin => 0.4,
+            Self::Paradox => 0.35,
+            Self::Crystal => 0.3,
+            Self::Rockland => 0.2,
+            Self::Desert => 0.15,
+            Self::Blight => 0.1,
+            Self::Frost => 0.1,
             Self::Infernal => 0.05,
+            Self::Void => 0.02,
             Self::Bare => 0.0,
+        }
+    }
+
+    pub fn is_living(self) -> bool {
+        !matches!(
+            self,
+            Self::Bare | Self::Infernal | Self::Blight | Self::Void
+        )
+    }
+
+    pub fn grows(self) -> bool {
+        self.fertility() >= 0.25
+    }
+
+    pub fn speck(self) -> u32 {
+        match self {
+            Self::Bare => 0,
+            Self::Desert | Self::Frost => 6,
+            Self::Rockland | Self::Void => 8,
+            Self::Infernal | Self::Garlic => 10,
+            Self::Pumpkin | Self::Savanna | Self::Crystal => 12,
+            Self::Enchanted | Self::Birch | Self::Candy | Self::Lemon => 14,
+            Self::Grass | Self::Blight => 16,
+            Self::Maple | Self::Starlight => 18,
+            Self::Mushroom | Self::Paradox => 20,
+            Self::Clover => 22,
+            Self::Swamp => 24,
+            Self::Flower => 26,
+            Self::Jungle => 30,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Flora {
+    Sapling,
+    Tree,
+    Bush,
+}
+
+pub const FLORAS: [Flora; 3] = [Flora::Sapling, Flora::Tree, Flora::Bush];
+
+const BERRY: [u8; 3] = [0xc8, 0x34, 0x3c];
+
+impl Flora {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Sapling => "sapling",
+            Self::Tree => "tree",
+            Self::Bush => "fruit_bush",
+        }
+    }
+
+    pub fn tint(self, cover: [u8; 3]) -> [u8; 3] {
+        match self {
+            Self::Sapling => scale(cover, 0.82),
+            Self::Tree => scale(cover, 0.58),
+            Self::Bush => scale(cover, 0.7),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Ore {
+    Stone,
+    Metal,
+    Silver,
+    Mythril,
+    Adamantine,
+    Gold,
+}
+
+pub const ORES: [Ore; 6] = [
+    Ore::Stone,
+    Ore::Metal,
+    Ore::Silver,
+    Ore::Mythril,
+    Ore::Adamantine,
+    Ore::Gold,
+];
+
+impl Ore {
+    pub const fn color(self) -> [u8; 3] {
+        match self {
+            Self::Stone => [0x8a, 0x8c, 0x88],
+            Self::Metal => [0xb0, 0x78, 0x48],
+            Self::Silver => [0xd8, 0xdc, 0xe4],
+            Self::Mythril => [0x6a, 0xd8, 0xc8],
+            Self::Adamantine => [0x9a, 0x5c, 0xd8],
+            Self::Gold => [0xf2, 0xc2, 0x3a],
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Stone => "stone",
+            Self::Metal => "metal",
+            Self::Silver => "silver",
+            Self::Mythril => "mythril",
+            Self::Adamantine => "adamantine",
+            Self::Gold => "gold",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Wall {
+    Order,
+    Evil,
+    Ancient,
+    Wild,
+    Green,
+    Iron,
+    Light,
+}
+
+pub const WALLS: [Wall; 7] = [
+    Wall::Order,
+    Wall::Evil,
+    Wall::Ancient,
+    Wall::Wild,
+    Wall::Green,
+    Wall::Iron,
+    Wall::Light,
+];
+
+impl Wall {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Order => "wall_order",
+            Self::Evil => "wall_evil",
+            Self::Ancient => "wall_ancient",
+            Self::Wild => "wall_wild",
+            Self::Green => "wall_green",
+            Self::Iron => "wall_iron",
+            Self::Light => "wall_light",
+        }
+    }
+
+    pub fn color(self) -> [u8; 3] {
+        match self {
+            Self::Order => [0x9a, 0xa0, 0xa8],
+            Self::Evil => [0x6a, 0x3c, 0x58],
+            Self::Ancient => [0xb8, 0xa2, 0x74],
+            Self::Wild => [0x9a, 0x68, 0x3a],
+            Self::Green => [0x58, 0x9c, 0x48],
+            Self::Iron => [0x6c, 0x78, 0x88],
+            Self::Light => [0xf0, 0xe0, 0x9a],
         }
     }
 }
@@ -162,6 +413,9 @@ impl Overlay {
 pub struct Tile {
     pub ground: Ground,
     pub overlay: Overlay,
+    pub flora: Option<Flora>,
+    pub ore: Option<Ore>,
+    pub wall: Option<Wall>,
 }
 
 impl Tile {
@@ -173,11 +427,53 @@ impl Tile {
             } else {
                 Overlay::Bare
             },
+            flora: None,
+            ore: None,
+            wall: None,
         }
     }
 
     pub fn bare(ground: Ground) -> Self {
         Self::new(ground, Overlay::Bare)
+    }
+
+    pub fn with_ground(self, ground: Ground) -> Self {
+        Self::new(ground, self.overlay)
+            .with_flora(self.flora)
+            .with_ore(self.ore)
+            .with_wall(self.wall)
+    }
+
+    pub fn with_overlay(self, overlay: Overlay) -> Self {
+        Self::new(self.ground, overlay)
+            .with_flora(self.flora)
+            .with_ore(self.ore)
+            .with_wall(self.wall)
+    }
+
+    pub fn with_wall(self, wall: Option<Wall>) -> Self {
+        Self {
+            wall: wall.filter(|_| self.ground.takes_wall()),
+            ..self
+        }
+    }
+
+    pub fn blocks(self) -> bool {
+        self.wall.is_some()
+    }
+
+    pub fn with_flora(self, flora: Option<Flora>) -> Self {
+        Self {
+            flora: flora.filter(|_| self.overlay.grows()),
+            ..self
+        }
+    }
+
+    pub fn with_ore(self, ore: Option<Ore>) -> Self {
+        Self {
+            ore: ore.filter(|_| self.ground.takes_ore()),
+            ..self
+        }
     }
 
     pub fn is_water(self) -> bool {
@@ -196,10 +492,22 @@ impl Tile {
         self.overlay.fertility()
     }
 
-    pub fn color(self) -> [u8; 3] {
+    pub fn cover(self) -> [u8; 3] {
         self.overlay
             .color(self.ground.is_high())
             .unwrap_or_else(|| self.ground.color())
+    }
+
+    pub fn color(self) -> [u8; 3] {
+        if let Some(wall) = self.wall {
+            return wall.color();
+        }
+
+        match (self.flora, self.ore) {
+            (Some(flora), _) => flora.tint(self.cover()),
+            (None, Some(ore)) => ore.color(),
+            (None, None) => self.cover(),
+        }
     }
 
     pub fn name(self) -> String {
@@ -212,6 +520,13 @@ impl Tile {
                 if self.ground.is_high() { "high" } else { "low" }
             ),
         }
+    }
+
+    pub fn object(self) -> Option<&'static str> {
+        self.wall
+            .map(Wall::name)
+            .or_else(|| self.flora.map(Flora::name))
+            .or_else(|| self.ore.map(Ore::name))
     }
 }
 
@@ -237,13 +552,15 @@ fn scale(color: [u8; 3], by: f32) -> [u8; 3] {
 
 impl Tile {
     pub fn speck_chance(self) -> u32 {
-        match self.overlay {
-            Overlay::Jungle => 30,
-            Overlay::Grass => 16,
-            Overlay::Enchanted => 14,
-            Overlay::Infernal => 10,
-            Overlay::Pumpkin => 12,
-            Overlay::Bare => 0,
+        if self.wall.is_some() {
+            return 0;
+        }
+
+        match (self.flora, self.ore) {
+            (Some(Flora::Tree), _) => 34,
+            (Some(_), _) => 20,
+            (None, Some(_)) => 0,
+            (None, None) => self.overlay.speck(),
         }
     }
 
@@ -252,7 +569,7 @@ impl Tile {
             Ground::DeepOcean | Ground::CloseOcean => 4,
             Ground::ShallowWaters => 7,
             Ground::Sand => 9,
-            Ground::Hills | Ground::Mountains => 11,
+            Ground::Hills | Ground::Mountains | Ground::Summit => 11,
             _ => 14,
         }
     }
@@ -260,6 +577,20 @@ impl Tile {
     pub fn textured(self, x: u32, y: u32) -> [u8; 3] {
         let noise = hash(x, y);
         let base = self.color();
+
+        if self.wall.is_some() {
+            let by = (noise % 9) as i32 - 4;
+            return base.map(|channel| nudge(channel, by));
+        }
+
+        if self.flora == Some(Flora::Bush) && noise.is_multiple_of(3) {
+            return BERRY;
+        }
+
+        if self.ore.is_some() && noise.is_multiple_of(4) {
+            return scale(base, 1.18);
+        }
+
         let speck = self.speck_chance();
 
         if speck > 0 && noise % 100 < speck {
@@ -297,6 +628,26 @@ mod tests {
         assert_eq!(
             Tile::new(Ground::SoilLow, Overlay::Infernal).name(),
             "soil_low:infernal_low"
+        );
+        assert_eq!(
+            Tile::new(Ground::SoilLow, Overlay::Blight).name(),
+            "soil_low:corrupted_low"
+        );
+        assert_eq!(
+            Tile::new(Ground::SoilHigh, Overlay::Frost).name(),
+            "soil_high:permafrost_high"
+        );
+        assert_eq!(
+            Tile::new(Ground::SoilLow, Overlay::Starlight).name(),
+            "soil_low:celestial_low"
+        );
+        assert_eq!(
+            Tile::new(Ground::SoilLow, Overlay::Void).name(),
+            "soil_low:singularity_low"
+        );
+        assert_eq!(
+            Tile::new(Ground::SoilLow, Overlay::Rockland).name(),
+            "soil_low:rocklands_low"
         );
     }
 
@@ -347,6 +698,7 @@ mod tests {
             Ground::SoilHigh,
             Ground::Hills,
             Ground::Mountains,
+            Ground::Summit,
         ];
 
         assert!(
@@ -370,7 +722,61 @@ mod tests {
         let before = seen.len();
         seen.dedup();
 
-        assert!(seen.len() >= 20, "{} distinct of {before}", seen.len());
+        assert_eq!(seen.len(), 57, "{} distinct of {before}", seen.len());
+    }
+
+    #[test]
+    fn every_biome_has_its_own_name_and_its_own_pair_of_colours() {
+        let mut names: Vec<&str> = OVERLAYS.iter().map(|overlay| overlay.name()).collect();
+        let mut colours: Vec<[u8; 3]> = OVERLAYS
+            .iter()
+            .skip(1)
+            .flat_map(|overlay| [overlay.color(false), overlay.color(true)])
+            .map(|colour| colour.expect("a living biome has a colour"))
+            .chain(GROUNDS.map(Ground::color))
+            .collect();
+        names.sort_unstable();
+        names.dedup();
+        colours.sort_unstable();
+        colours.dedup();
+
+        assert_eq!(names.len(), OVERLAYS.len());
+        assert_eq!(colours.len(), (OVERLAYS.len() - 1) * 2 + GROUNDS.len());
+    }
+
+    #[test]
+    fn high_ground_wears_the_darker_shade_of_every_biome() {
+        for overlay in OVERLAYS.iter().skip(1) {
+            let low: u32 = overlay
+                .color(false)
+                .expect("low")
+                .map(u32::from)
+                .iter()
+                .sum();
+            let high: u32 = overlay
+                .color(true)
+                .expect("high")
+                .map(u32::from)
+                .iter()
+                .sum();
+
+            assert!(high < low, "{}", overlay.name());
+        }
+    }
+
+    #[test]
+    fn every_fertility_is_a_share_and_only_bare_ground_is_barren() {
+        for overlay in OVERLAYS {
+            let fertility = overlay.fertility();
+
+            assert!((0.0..=1.0).contains(&fertility), "{}", overlay.name());
+            assert_eq!(
+                fertility == 0.0,
+                overlay == Overlay::Bare,
+                "{}",
+                overlay.name()
+            );
+        }
     }
 
     #[test]
@@ -438,5 +844,151 @@ mod tests {
         assert!(Overlay::Grass.fertility() > Overlay::Jungle.fertility());
         assert!(Overlay::Jungle.fertility() > Overlay::Infernal.fertility());
         assert_eq!(Overlay::Bare.fertility(), 0.0);
+    }
+
+    #[test]
+    fn trees_take_root_only_where_the_biome_can_feed_them() {
+        let meadow = Tile::new(Ground::SoilLow, Overlay::Grass);
+        let dunes = Tile::new(Ground::SoilLow, Overlay::Desert);
+        let sea = Tile::bare(Ground::ShallowWaters);
+
+        assert_eq!(
+            meadow.with_flora(Some(Flora::Tree)).flora,
+            Some(Flora::Tree)
+        );
+        assert_eq!(dunes.with_flora(Some(Flora::Tree)).flora, None);
+        assert_eq!(sea.with_flora(Some(Flora::Bush)).flora, None);
+        assert!(OVERLAYS.iter().filter(|overlay| overlay.grows()).count() >= 15);
+    }
+
+    #[test]
+    fn reseeding_a_forest_keeps_its_trees_unless_the_new_biome_is_barren() {
+        let forest = Tile::new(Ground::SoilHigh, Overlay::Grass).with_flora(Some(Flora::Tree));
+
+        assert_eq!(forest.with_overlay(Overlay::Birch).flora, Some(Flora::Tree));
+        assert_eq!(forest.with_overlay(Overlay::Desert).flora, None);
+        assert_eq!(
+            forest.with_overlay(Overlay::Desert).overlay,
+            Overlay::Desert
+        );
+    }
+
+    #[test]
+    fn ore_lies_only_in_the_hills_and_mountains() {
+        for ground in GROUNDS {
+            let tile = Tile::bare(ground).with_ore(Some(Ore::Gold));
+
+            assert_eq!(tile.ore.is_some(), ground.takes_ore(), "{}", ground.name());
+        }
+    }
+
+    #[test]
+    fn a_deposit_survives_a_climb_but_not_a_fall_into_soil() {
+        let vein = Tile::bare(Ground::Hills).with_ore(Some(Ore::Silver));
+
+        assert_eq!(vein.with_ground(Ground::Mountains).ore, Some(Ore::Silver));
+        assert_eq!(vein.with_ground(Ground::SoilHigh).ore, None);
+    }
+
+    #[test]
+    fn trees_and_deposits_show_on_the_map_and_name_themselves() {
+        let meadow = Tile::new(Ground::SoilLow, Overlay::Grass);
+        let tree = meadow.with_flora(Some(Flora::Tree));
+        let bush = meadow.with_flora(Some(Flora::Bush));
+        let vein = Tile::bare(Ground::Mountains).with_ore(Some(Ore::Mythril));
+        let shade = |colour: [u8; 3]| colour.map(u32::from).iter().sum::<u32>();
+
+        assert!(shade(tree.color()) < shade(meadow.color()));
+        assert_eq!(vein.color(), Ore::Mythril.color());
+        assert_eq!(tree.object(), Some("tree"));
+        assert_eq!(bush.object(), Some("fruit_bush"));
+        assert_eq!(vein.object(), Some("mythril"));
+        assert_eq!(meadow.object(), None);
+        assert_eq!(tree.name(), meadow.name());
+        assert!((0..30).any(|x| bush.textured(x, 0) == BERRY));
+    }
+
+    #[test]
+    fn every_deposit_has_its_own_colour_and_name() {
+        let mut colours: Vec<[u8; 3]> = ORES.map(Ore::color).to_vec();
+        let mut names: Vec<&str> = ORES.map(Ore::name).to_vec();
+        colours.sort_unstable();
+        colours.dedup();
+        names.sort_unstable();
+        names.dedup();
+
+        assert_eq!(colours.len(), ORES.len());
+        assert_eq!(names.len(), ORES.len());
+        assert_eq!(FLORAS.map(Flora::name).len(), 3);
+    }
+
+    #[test]
+    fn the_summit_is_the_highest_rock_and_keeps_the_worldbox_colour() {
+        let summit = Tile::bare(Ground::Summit);
+
+        assert!(Ground::Summit.elevation() > Ground::Mountains.elevation());
+        assert!(Ground::Summit.is_high());
+        assert_eq!(summit.name(), "summit");
+        assert_eq!(summit.color(), [0x33, 0x33, 0x33]);
+        assert_eq!(
+            Tile::new(Ground::Summit, Overlay::Grass).overlay,
+            Overlay::Bare
+        );
+    }
+
+    #[test]
+    fn a_wall_stands_on_land_and_shows_its_own_colour() {
+        let soil = Tile::new(Ground::SoilLow, Overlay::Grass);
+        let walled = soil.with_wall(Some(Wall::Iron));
+
+        assert!(walled.blocks());
+        assert_eq!(walled.color(), Wall::Iron.color());
+        assert_eq!(walled.object(), Some("wall_iron"));
+        assert_eq!(walled.name(), soil.name());
+        assert!(!soil.blocks());
+    }
+
+    #[test]
+    fn water_and_lava_refuse_a_wall() {
+        for ground in [Ground::DeepOcean, Ground::ShallowWaters, Ground::Lava3] {
+            assert_eq!(Tile::bare(ground).with_wall(Some(Wall::Order)).wall, None);
+        }
+    }
+
+    #[test]
+    fn a_wall_survives_a_change_of_ground_until_the_sea_takes_it() {
+        let walled = Tile::bare(Ground::SoilLow).with_wall(Some(Wall::Wild));
+
+        assert_eq!(walled.with_ground(Ground::Hills).wall, Some(Wall::Wild));
+        assert_eq!(walled.with_overlay(Overlay::Jungle).wall, Some(Wall::Wild));
+        assert_eq!(walled.with_ground(Ground::CloseOcean).wall, None);
+        assert_eq!(Tile::bare(walled.ground).wall, None);
+    }
+
+    #[test]
+    fn every_wall_has_a_name_and_colour_of_its_own() {
+        let mut names: Vec<&str> = WALLS.iter().map(|wall| wall.name()).collect();
+        let mut colours: Vec<[u8; 3]> = WALLS.iter().map(|wall| wall.color()).collect();
+        names.sort_unstable();
+        names.dedup();
+        colours.sort_unstable();
+        colours.dedup();
+
+        assert_eq!(names.len(), WALLS.len());
+        assert_eq!(colours.len(), WALLS.len());
+    }
+
+    #[test]
+    fn a_wall_is_drawn_as_one_flat_block() {
+        let walled = Tile::bare(Ground::SoilLow).with_wall(Some(Wall::Light));
+        let base = Wall::Light.color();
+
+        for x in 0..32 {
+            let shade = walled.textured(x, 7);
+
+            for channel in 0..3 {
+                assert!((i32::from(shade[channel]) - i32::from(base[channel])).abs() <= 4);
+            }
+        }
     }
 }

@@ -1,16 +1,22 @@
 //! The painting tools: what the pointer puts on the map, and how to take it back.
 
+mod blast;
+
+pub use blast::{
+    BOMBS, Bomb, BombDrop, BombRest, Charge, Detonate, Fuse, blasted, burst, drops, scatter,
+};
+
 use bevy::prelude::*;
 use econbox_art::Icon;
 use econbox_camera::Panning;
 pub use econbox_camera::PointerOverUi;
 use econbox_creature::{Effect, Spawn, Species, Strike};
 use econbox_cursor::Hovered;
-use econbox_tile::{Ground, Overlay, Tile};
+use econbox_tile::{Flora, Ground, Ore, Overlay, Tile, Wall};
 use econbox_tilemap::{Painted, TileMap, TilePos};
 use std::collections::{HashSet, VecDeque};
 
-pub const LADDER: [Ground; 8] = [
+pub const LADDER: [Ground; 9] = [
     Ground::DeepOcean,
     Ground::CloseOcean,
     Ground::ShallowWaters,
@@ -19,6 +25,7 @@ pub const LADDER: [Ground; 8] = [
     Ground::SoilHigh,
     Ground::Hills,
     Ground::Mountains,
+    Ground::Summit,
 ];
 
 pub const MIN_RADIUS: u32 = 0;
@@ -197,7 +204,9 @@ impl Power {
     }
 
     pub fn touched(self, tile: Tile, touch: Touch) -> Option<Tile> {
-        let Tile { ground, overlay } = tile;
+        let Tile {
+            ground, overlay, ..
+        } = tile;
         let soil = matches!(ground, Ground::SoilLow | Ground::SoilHigh);
         let green = !matches!(overlay, Overlay::Bare | Overlay::Infernal);
         let rung = rung(ground);
@@ -220,11 +229,11 @@ impl Power {
             Self::Drought if soil || ground == Ground::ShallowWaters => Tile::bare(Ground::Sand),
             Self::Mound => {
                 let peak = cone(1.0 - touch.rim);
-                Tile::new(LADDER[rung?.max(peak)], overlay)
+                tile.with_ground(LADDER[rung?.max(peak)])
             }
             Self::Pit => {
                 let floor = cone(touch.rim);
-                Tile::new(LADDER[rung?.min(floor)], overlay)
+                tile.with_ground(LADDER[rung?.min(floor)])
             }
             Self::Quake if touch.noise.is_multiple_of(3) && ground.is_land() => {
                 Tile::bare(step(ground, -1))
@@ -255,7 +264,7 @@ fn cone(height: f32) -> usize {
 }
 
 pub fn levelled(tile: Tile, ground: Ground) -> Option<Tile> {
-    let next = Tile::new(ground, tile.overlay);
+    let next = tile.with_ground(ground);
 
     (next != tile).then_some(next)
 }
@@ -536,11 +545,21 @@ pub enum Tool {
     Strip,
     Spawn(Species),
     Power(Power),
+    Plant(Flora),
+    Fell,
+    Ore(Ore),
+    Mine,
+    Wall(Wall),
+    Drop(Bomb),
 }
+
+const TREE_SHARE: u32 = 45;
+const BUSH_SHARE: u32 = 22;
+const ORE_SHARE: u32 = 35;
 
 impl Tool {
     pub fn edits(self) -> bool {
-        !matches!(self, Self::Inspect | Self::Spawn(_))
+        !matches!(self, Self::Inspect | Self::Spawn(_) | Self::Drop(_))
     }
 
     pub fn holds(self) -> bool {
@@ -557,7 +576,27 @@ impl Tool {
             Self::Strip => "strip".to_string(),
             Self::Spawn(species) => species.name().to_string(),
             Self::Power(power) => power.name().to_string(),
+            Self::Plant(flora) => flora.name().to_string(),
+            Self::Fell => "fell".to_string(),
+            Self::Ore(ore) => ore.name().to_string(),
+            Self::Mine => "mine".to_string(),
+            Self::Wall(wall) => wall.name().to_string(),
+            Self::Drop(bomb) => bomb.name().to_string(),
         }
+    }
+
+    pub fn share(self) -> Option<u32> {
+        match self {
+            Self::Plant(Flora::Bush) => Some(BUSH_SHARE),
+            Self::Plant(_) => Some(TREE_SHARE),
+            Self::Ore(_) => Some(ORE_SHARE),
+            _ => None,
+        }
+    }
+
+    pub fn lands(self, pos: TilePos) -> bool {
+        self.share()
+            .is_none_or(|share| mix(pos.x, pos.y, 0x5eed_7ee5) % 100 < share)
     }
 
     pub fn swatch(self) -> Option<[u8; 3]> {
@@ -565,6 +604,10 @@ impl Tool {
             Self::Ground(ground) => Some(ground.color()),
             Self::Overlay(overlay) => overlay.color(false),
             Self::Spawn(species) => Some(species.color()),
+            Self::Plant(Flora::Bush) => Some([0xd8, 0x52, 0x3c]),
+            Self::Plant(_) => Some([0x2c, 0x7c, 0x3a]),
+            Self::Ore(ore) => Some(ore.color()),
+            Self::Wall(wall) => Some(wall.color()),
             _ => None,
         }
     }
@@ -579,18 +622,32 @@ impl Tool {
             Self::Strip => (Icon::Eraser, None),
             Self::Inspect => (Icon::Lens, None),
             Self::Power(power) => (power.icon(), None),
+            Self::Plant(_) => (Icon::Sprout, self.swatch()),
+            Self::Fell => (Icon::Sprig, None),
+            Self::Ore(_) => (Icon::Block, self.swatch()),
+            Self::Mine => (Icon::Peaks, None),
+            Self::Wall(_) => (Icon::Block, self.swatch()),
+            Self::Drop(_) => (Icon::Bomb, None),
             Self::Spawn(_) => return None,
         })
     }
 
     pub fn applied(self, tile: Tile) -> Option<Tile> {
         let next = match self {
-            Self::Inspect | Self::Spawn(_) | Self::Power(_) => return None,
-            Self::Ground(ground) => Tile::new(ground, tile.overlay),
-            Self::Overlay(overlay) => Tile::new(tile.ground, overlay),
-            Self::Raise => Tile::new(step(tile.ground, 1), tile.overlay),
-            Self::Lower => Tile::new(step(tile.ground, -1), tile.overlay),
-            Self::Strip => Tile::bare(tile.ground),
+            Self::Inspect | Self::Spawn(_) | Self::Power(_) | Self::Drop(_) => return None,
+            Self::Ground(ground) => tile.with_ground(ground),
+            Self::Overlay(overlay) => tile.with_overlay(overlay),
+            Self::Raise => tile.with_ground(step(tile.ground, 1)),
+            Self::Lower => tile.with_ground(step(tile.ground, -1)),
+            Self::Strip => Tile::bare(tile.ground).with_ore(tile.ore),
+            Self::Plant(_) if tile.flora.is_some_and(|flora| flora != Flora::Sapling) => {
+                return None;
+            }
+            Self::Plant(flora) => tile.with_flora(Some(flora)),
+            Self::Fell => tile.with_flora(None),
+            Self::Ore(ore) => tile.with_ore(Some(ore)),
+            Self::Mine => tile.with_ore(None),
+            Self::Wall(wall) => tile.with_wall(Some(wall)),
         };
 
         (next != tile).then_some(next)
@@ -817,11 +874,23 @@ impl Plugin for BrushPlugin {
             .init_resource::<SpawnRest>()
             .init_resource::<PowerRest>()
             .init_resource::<ForcedBrush>()
+            .init_resource::<BombRest>()
             .add_message::<Painted>()
             .add_message::<Undo>()
+            .add_message::<BombDrop>()
+            .add_message::<Detonate>()
             .add_systems(
                 Update,
-                (hold_pan, paint, drop_in, rewind)
+                (
+                    hold_pan,
+                    paint,
+                    drop_in,
+                    blast::bombard,
+                    blast::land,
+                    blast::tick,
+                    blast::explode,
+                    rewind,
+                )
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -907,6 +976,7 @@ fn paint(
         tool => brush
             .targets(&map, centre)
             .into_iter()
+            .filter(|pos| (brush.radius == 0 && !brush.flood) || tool.lands(*pos))
             .filter_map(|pos| {
                 let tile = map.get(pos)?;
                 Some((pos, tile, tool.applied(tile)?))
@@ -1020,7 +1090,9 @@ mod tests {
     fn raising_walks_up_the_elevation_ladder_and_stops_at_the_peak() {
         assert_eq!(step(Ground::DeepOcean, 1), Ground::CloseOcean);
         assert_eq!(step(Ground::Sand, 1), Ground::SoilLow);
-        assert_eq!(step(Ground::Mountains, 1), Ground::Mountains);
+        assert_eq!(step(Ground::Mountains, 1), Ground::Summit);
+        assert_eq!(step(Ground::Summit, 1), Ground::Summit);
+        assert_eq!(step(Ground::Summit, -1), Ground::Mountains);
     }
 
     #[test]
@@ -1476,7 +1548,7 @@ mod tests {
         let top = Power::Mound.touched(plain, touch(0.0)).expect("a peak");
         let shoulder = Power::Mound.touched(plain, touch(0.5)).expect("a shoulder");
 
-        assert_eq!(top.ground, Ground::Mountains);
+        assert_eq!(top.ground, Ground::Summit);
         assert!(shoulder.ground.elevation() < top.ground.elevation());
         assert_eq!(Power::Mound.touched(plain, touch(1.0)), None);
         assert_eq!(Power::Mound.touched(top, touch(0.0)), None);
@@ -1757,5 +1829,168 @@ mod tests {
             Tool::Spawn(Species::Fox).swatch(),
             Some(Species::Fox.color())
         );
+    }
+
+    fn forest() -> Tile {
+        Tile::new(Ground::SoilLow, Overlay::Grass).with_flora(Some(Flora::Tree))
+    }
+
+    #[test]
+    fn the_axe_fells_trees_and_leaves_the_grass() {
+        let felled = Tool::Fell.applied(forest()).expect("a stump");
+
+        assert_eq!(felled, Tile::new(Ground::SoilLow, Overlay::Grass));
+        assert_eq!(Tool::Fell.applied(felled), None);
+    }
+
+    #[test]
+    fn the_sickle_clears_plants_and_trees_but_not_the_ore() {
+        let vein = Tile::bare(Ground::Hills).with_ore(Some(Ore::Gold));
+
+        assert_eq!(
+            Tool::Strip.applied(forest()),
+            Some(Tile::bare(Ground::SoilLow))
+        );
+        assert_eq!(Tool::Strip.applied(vein), None);
+    }
+
+    #[test]
+    fn the_pickaxe_breaks_deposits_and_nothing_else() {
+        let vein = Tile::bare(Ground::Mountains).with_ore(Some(Ore::Adamantine));
+
+        assert_eq!(
+            Tool::Mine.applied(vein),
+            Some(Tile::bare(Ground::Mountains))
+        );
+        assert_eq!(Tool::Mine.applied(forest()), None);
+    }
+
+    #[test]
+    fn deposits_are_buried_only_in_rock() {
+        let hill = Tile::bare(Ground::Hills);
+
+        assert_eq!(
+            Tool::Ore(Ore::Silver)
+                .applied(hill)
+                .and_then(|tile| tile.ore),
+            Some(Ore::Silver)
+        );
+        assert_eq!(
+            Tool::Ore(Ore::Silver).applied(Tile::bare(Ground::Sand)),
+            None
+        );
+        assert_eq!(
+            Tool::Ore(Ore::Gold)
+                .applied(hill.with_ore(Some(Ore::Stone)))
+                .and_then(|tile| tile.ore),
+            Some(Ore::Gold)
+        );
+    }
+
+    #[test]
+    fn tree_food_raises_saplings_and_plants_only_on_fertile_ground() {
+        let meadow = Tile::new(Ground::SoilHigh, Overlay::Clover);
+        let sapling = meadow.with_flora(Some(Flora::Sapling));
+        let bush = meadow.with_flora(Some(Flora::Bush));
+
+        assert_eq!(
+            Tool::Plant(Flora::Tree)
+                .applied(meadow)
+                .and_then(|tile| tile.flora),
+            Some(Flora::Tree)
+        );
+        assert_eq!(
+            Tool::Plant(Flora::Tree)
+                .applied(sapling)
+                .and_then(|tile| tile.flora),
+            Some(Flora::Tree)
+        );
+        assert_eq!(Tool::Plant(Flora::Tree).applied(bush), None);
+        assert_eq!(
+            Tool::Plant(Flora::Bush).applied(Tile::new(Ground::SoilLow, Overlay::Void)),
+            None
+        );
+    }
+
+    #[test]
+    fn planting_and_burying_scatter_over_the_brush_instead_of_carpeting_it() {
+        let landed = |tool: Tool| {
+            (0..64)
+                .flat_map(|y| (0..64).map(move |x| TilePos::new(x, y)))
+                .filter(|pos| tool.lands(*pos))
+                .count()
+        };
+        let all = 64 * 64;
+
+        assert_eq!(landed(Tool::Ground(Ground::Sand)), all);
+        assert!((all * 35 / 100..all * 55 / 100).contains(&landed(Tool::Plant(Flora::Tree))));
+        assert!((all * 15 / 100..all * 30 / 100).contains(&landed(Tool::Plant(Flora::Bush))));
+        assert!((all * 25 / 100..all * 45 / 100).contains(&landed(Tool::Ore(Ore::Gold))));
+    }
+
+    #[test]
+    fn reshaping_the_land_keeps_what_grows_on_it() {
+        let raised = Tool::Raise.applied(forest()).expect("a climb");
+
+        assert_eq!(raised.ground, Ground::SoilHigh);
+        assert_eq!(raised.flora, Some(Flora::Tree));
+        assert_eq!(Power::Mound.touched(forest(), touch(1.0)), None);
+        assert_eq!(levelled(forest(), Ground::SoilLow), None);
+        assert_eq!(
+            Tool::Overlay(Overlay::Maple)
+                .applied(forest())
+                .and_then(|tile| tile.flora),
+            Some(Flora::Tree)
+        );
+    }
+
+    #[test]
+    fn fire_burns_the_forest_down() {
+        assert_eq!(
+            Power::Fire.touched(forest(), touch(0.0)),
+            Some(Tile::new(Ground::SoilLow, Overlay::Infernal))
+        );
+    }
+
+    #[test]
+    fn the_new_tools_are_named_and_drawn() {
+        for tool in [
+            Tool::Plant(Flora::Tree),
+            Tool::Plant(Flora::Bush),
+            Tool::Fell,
+            Tool::Ore(Ore::Mythril),
+            Tool::Mine,
+        ] {
+            assert!(tool.edits(), "{tool:?}");
+            assert!(tool.icon().is_some(), "{tool:?}");
+            assert!(!tool.name().is_empty(), "{tool:?}");
+        }
+    }
+
+    #[test]
+    fn a_wall_brush_raises_walls_on_land_and_leaves_the_sea_alone() {
+        let soil = Tile::new(Ground::SoilLow, Overlay::Grass);
+        let walled = Tool::Wall(Wall::Green).applied(soil).expect("a wall");
+
+        assert_eq!(walled.wall, Some(Wall::Green));
+        assert_eq!(walled.overlay, Overlay::Grass);
+        assert_eq!(Tool::Wall(Wall::Green).applied(walled), None);
+        assert_eq!(
+            Tool::Wall(Wall::Green).applied(Tile::bare(Ground::DeepOcean)),
+            None
+        );
+        assert_eq!(Tool::Wall(Wall::Iron).name(), "wall_iron");
+        assert_eq!(Tool::Wall(Wall::Iron).swatch(), Some(Wall::Iron.color()));
+    }
+
+    #[test]
+    fn a_bomb_tool_drops_bombs_instead_of_painting() {
+        let tool = Tool::Drop(Bomb::Grenade);
+
+        assert!(!tool.edits());
+        assert!(tool.holds());
+        assert_eq!(tool.applied(Tile::bare(Ground::Sand)), None);
+        assert_eq!(tool.name(), "grenade");
+        assert_eq!(tool.icon().map(|found| found.0), Some(Icon::Bomb));
     }
 }

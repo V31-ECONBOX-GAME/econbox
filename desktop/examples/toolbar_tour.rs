@@ -4,11 +4,12 @@ use bevy::input::mouse::{MouseButtonInput, MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 use bevy::window::{CursorMoved, PrimaryWindow, WindowEvent};
-use econbox_toolbar::canvas_scale;
-use econbox_toolbar::catalog::{Item, STRIP, TabId, tab};
+use econbox_toolbar::catalog::{Item, TabId, tab};
 use econbox_toolbar::layout::{
     STRIP_BOTTOM, STRIP_CELL_HEIGHT, STRIP_CELL_WIDTH, TAB_ORIGIN, arrange,
 };
+use econbox_toolbar::strip::strip_left;
+use econbox_toolbar::{BarSize, StripOrder, canvas_scale};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,8 @@ enum Step {
     Wait(u32),
     Point(Spot),
     Click(Spot),
+    Press(Spot),
+    Release,
     Drag(Spot, Spot),
     Key(KeyCode),
     Down(KeyCode),
@@ -53,19 +56,15 @@ fn button_centre(id: TabId, button: &str) -> Vec2 {
     Vec2::new(x, TAB_ORIGIN + y)
 }
 
-fn resolve(spot: Spot, size: Vec2) -> Vec2 {
-    let scale = canvas_scale(size);
+fn resolve(spot: Spot, size: Vec2, bar: BarSize, order: &StripOrder) -> Vec2 {
+    let scale = canvas_scale(size, bar);
     let canvas = match spot {
         Spot::Canvas(x, y) => Vec2::new(x, y),
         Spot::Button(id, button) => button_centre(id, button),
         Spot::Strip(id) => {
-            let at = STRIP
-                .iter()
-                .position(|cell| *cell == id)
-                .expect("strip tab") as f32;
-            let width = STRIP_CELL_WIDTH * STRIP.len() as f32;
+            let at = order.index(id).expect("strip tab") as f32;
             Vec2::new(
-                size.x / scale * 0.5 - width * 0.5 + STRIP_CELL_WIDTH * (at + 0.5),
+                strip_left(size.x / scale) + STRIP_CELL_WIDTH * (at + 0.5),
                 STRIP_BOTTOM + STRIP_CELL_HEIGHT * 0.5,
             )
         }
@@ -133,9 +132,18 @@ fn script() -> Vec<Step> {
         Shot("13-tab-key"),
         Click(Strip(TabId::Destruction)),
         Wait(20),
-        Click(Button(TabId::Destruction, "tnt")),
+        Click(Button(TabId::Destruction, "force")),
         Wait(30),
         Shot("14-planned-button"),
+        Point(Button(TabId::Destruction, "grenade")),
+        Wait(3),
+        Click(Button(TabId::Destruction, "grenade")),
+        Wait(10),
+        Point(Canvas(300.0, 300.0)),
+        Wait(3),
+        Click(Canvas(300.0, 300.0)),
+        Wait(30),
+        Shot("14b-grenade"),
         Click(Strip(TabId::Creation)),
         Wait(30),
         Down(KeyCode::ControlLeft),
@@ -189,6 +197,48 @@ fn script() -> Vec<Step> {
         Click(Spot::Right),
         Wait(40),
         Shot("21-arrow-page"),
+        Point(Strip(TabId::Creation)),
+        Wait(3),
+        Press(Strip(TabId::Creation)),
+        Wait(25),
+        Point(Strip(TabId::Nature)),
+        Wait(10),
+        Point(Strip(TabId::Nature)),
+        Wait(4),
+        Shot("22-strip-dragging"),
+        Release,
+        Wait(40),
+        Shot("23-strip-reordered"),
+        Key(KeyCode::Tab),
+        Wait(30),
+        Shot("24-tab-follows-order"),
+        Down(KeyCode::ControlLeft),
+        Key(KeyCode::Equal),
+        Wait(2),
+        Key(KeyCode::Equal),
+        Wait(2),
+        Key(KeyCode::Equal),
+        Up(KeyCode::ControlLeft),
+        Wait(30),
+        Shot("25-bar-size-130"),
+        Key(KeyCode::KeyH),
+        Wait(40),
+        Down(KeyCode::ControlLeft),
+        Key(KeyCode::Minus),
+        Wait(2),
+        Key(KeyCode::Minus),
+        Wait(2),
+        Key(KeyCode::Minus),
+        Wait(2),
+        Key(KeyCode::Minus),
+        Up(KeyCode::ControlLeft),
+        Wait(25),
+        Shot("26-bar-size-preview"),
+        Wait(90),
+        Shot("27-preview-over"),
+        Key(KeyCode::KeyH),
+        Wait(40),
+        Shot("28-bar-size-90"),
         Wait(10),
     ]
 }
@@ -203,6 +253,8 @@ fn drive(
     mut keys: MessageWriter<KeyboardInput>,
     mut wheels: MessageWriter<MouseWheel>,
     mut exit: MessageWriter<AppExit>,
+    bar: Res<BarSize>,
+    order: Res<StripOrder>,
 ) {
     let Ok((entity, mut window)) = windows.single_mut() else {
         return;
@@ -262,16 +314,39 @@ fn drive(
 
     match step {
         Step::Wait(frames) => tour.waiting = frames as f32 / 60.0,
-        Step::Point(spot) => point(&mut window, &mut window_events, resolve(spot, size)),
+        Step::Point(spot) => point(
+            &mut window,
+            &mut window_events,
+            resolve(spot, size, *bar, &order),
+        ),
         Step::Click(spot) => {
-            point(&mut window, &mut window_events, resolve(spot, size));
+            point(
+                &mut window,
+                &mut window_events,
+                resolve(spot, size, *bar, &order),
+            );
             press(&mut window_events, &mut buttons, ButtonState::Pressed);
             let at = tour.at;
             tour.steps.insert(at, Step::Wait(2));
             tour.steps.insert(at + 1, Step::Key(KeyCode::F24));
         }
+        Step::Press(spot) => {
+            point(
+                &mut window,
+                &mut window_events,
+                resolve(spot, size, *bar, &order),
+            );
+            press(&mut window_events, &mut buttons, ButtonState::Pressed);
+        }
+        Step::Release => {
+            press(&mut window_events, &mut buttons, ButtonState::Released);
+        }
         Step::Drag(from, to) => {
-            tour.drag = Some((resolve(from, size), resolve(to, size), 0));
+            tour.drag = Some((
+                resolve(from, size, *bar, &order),
+                resolve(to, size, *bar, &order),
+                0,
+            ));
         }
         Step::Key(KeyCode::F24) => {
             press(&mut window_events, &mut buttons, ButtonState::Released);

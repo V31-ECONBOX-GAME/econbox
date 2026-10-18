@@ -11,17 +11,25 @@ mod panels;
 mod pointer;
 mod press;
 mod side;
+pub mod size;
+mod sound;
+pub mod strip;
 mod tabs;
 mod tips;
 
+use bevy::app::PropagateSet;
 use bevy::ecs::system::SystemParam;
 use bevy::picking::PickingSystems;
 use bevy::prelude::*;
+use bevy::ui::ComputedUiRenderTargetInfo;
 use catalog::{Act, Def, Kind, TabId};
 use econbox_brush::{Brush, ForcedBrush, Shape, Tool, named};
 use econbox_clock::WorldClock;
 
 pub use catalog::{find, home_of};
+pub use size::{BarSize, KeepSize};
+pub use sound::Cue;
+pub use strip::StripOrder;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Shown(pub TabId);
@@ -142,18 +150,18 @@ pub fn forced_for(def: &Def) -> Option<(Shape, u32)> {
     def.brush.and_then(named)
 }
 
-pub fn canvas_scale(window: Vec2) -> f32 {
+pub fn canvas_scale(window: Vec2, size: BarSize) -> f32 {
     (window.x / layout::CANVAS_WIDTH)
-        .min(window.y / layout::CANVAS_HEIGHT)
+        .min(window.y / (layout::CANVAS_HEIGHT * size.factor()))
         .max(0.01)
 }
 
-fn fit(windows: Query<&Window>, mut scale: ResMut<UiScale>) {
+fn fit(windows: Query<&Window>, size: Res<BarSize>, mut scale: ResMut<UiScale>) {
     let Some(window) = windows.iter().next() else {
         return;
     };
 
-    let wanted = canvas_scale(Vec2::new(window.width(), window.height()));
+    let wanted = canvas_scale(Vec2::new(window.width(), window.height()), *size);
 
     if (scale.0 - wanted).abs() > f32::EPSILON {
         scale.0 = wanted;
@@ -174,6 +182,10 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<bar::Scroll>()
             .init_resource::<tips::Hover>()
             .init_resource::<pointer::Grace>()
+            .init_resource::<BarSize>()
+            .init_resource::<size::Preview>()
+            .init_resource::<StripOrder>()
+            .init_resource::<strip::StripDrag>()
             .add_message::<Notice>()
             .add_observer(press::on_click)
             .add_observer(press::on_press)
@@ -195,28 +207,47 @@ impl Plugin for ToolbarPlugin {
             .add_systems(
                 Update,
                 (
-                    fit,
-                    keys::hotkeys,
-                    keys::wheel,
-                    bar::drag,
-                    bar::switch,
-                    bar::arrows,
-                    side::show,
-                    brushes::show,
-                    press::dress,
-                    press::hover,
-                    panels::refresh,
-                    tips::tooltip,
-                    tips::notice,
-                    pointer::follow,
-                    pointer::footprint,
+                    (
+                        size::resize,
+                        fit,
+                        size::preview,
+                        keys::hotkeys,
+                        keys::wheel,
+                        bar::drag,
+                        strip::drag,
+                        bar::switch,
+                        bar::arrows,
+                    )
+                        .chain(),
+                    (
+                        side::show,
+                        brushes::show,
+                        press::dress,
+                        press::hover,
+                        panels::refresh,
+                        tips::tooltip,
+                        tips::notice,
+                        pointer::follow,
+                        pointer::footprint,
+                        size::fade,
+                        sound::play,
+                    )
+                        .chain(),
                 )
                     .chain(),
             )
             .add_systems(
                 PostUpdate,
                 (motion::movers, motion::pops, motion::tilts).before(bevy::ui::UiSystems::Layout),
+            )
+            .add_systems(
+                PostUpdate,
+                size::keep
+                    .after(bevy::ui::update::propagate_ui_target_cameras)
+                    .before(PropagateSet::<ComputedUiRenderTargetInfo>::default()),
             );
+
+        sound::register(app);
     }
 }
 
@@ -226,8 +257,19 @@ mod tests {
 
     #[test]
     fn the_canvas_is_five_hundred_units_tall_on_a_wide_window() {
-        assert_eq!(canvas_scale(Vec2::new(2000.0, 1000.0)), 2.0);
-        assert_eq!(canvas_scale(Vec2::new(1280.0, 720.0)), 720.0 / 500.0);
+        let size = BarSize::default();
+        assert_eq!(canvas_scale(Vec2::new(2000.0, 1000.0), size), 2.0);
+        assert_eq!(canvas_scale(Vec2::new(1280.0, 720.0), size), 720.0 / 500.0);
+    }
+
+    #[test]
+    fn the_bar_size_scales_the_reference_height_by_two_minus_its_share() {
+        let wide = Vec2::new(4000.0, 1000.0);
+
+        assert_eq!(canvas_scale(wide, BarSize::new(150)), 1000.0 / 250.0);
+        assert_eq!(canvas_scale(wide, BarSize::new(50)), 1000.0 / 750.0);
+        assert!((canvas_scale(wide, BarSize::new(120)) - 1000.0 / 400.0).abs() < 1e-4);
+        assert_eq!(canvas_scale(wide, BarSize::new(500)), 1000.0 / 250.0);
     }
 
     #[test]
@@ -250,6 +292,13 @@ mod tests {
 
     #[test]
     fn a_narrow_window_is_limited_by_its_width() {
-        assert_eq!(canvas_scale(Vec2::new(285.0, 2000.0)), 1.0);
+        assert_eq!(
+            canvas_scale(Vec2::new(285.0, 2000.0), BarSize::default()),
+            1.0
+        );
+        assert_eq!(
+            canvas_scale(Vec2::new(285.0, 2000.0), BarSize::new(150)),
+            1.0
+        );
     }
 }

@@ -5,7 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-bevy = { workspace = true, features = ["2d", "ui"] }
+bevy = { workspace = true, features = ["2d", "ui", "bevy_audio"] }
 econbox-art = { workspace = true }
 econbox-brush = { workspace = true }
 econbox-camera = { workspace = true }

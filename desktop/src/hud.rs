@@ -2,6 +2,7 @@
 
 use crate::prelude::*;
 use crate::world::{Land, Survey};
+use econbox_toolbar::KeepSize;
 
 #[derive(Component)]
 struct HudLine(usize);
@@ -19,6 +20,7 @@ impl Plugin for HudPlugin {
 fn spawn(mut commands: Commands) {
     commands
         .spawn((
+            KeepSize,
             Node {
                 position_type: PositionType::Absolute,
                 right: Val::Px(11.0),
@@ -113,7 +115,15 @@ fn lines(
     [
         land.map_or_else(
             || "open sea".to_string(),
-            |land| format!("{}, {}   {}", land.pos.x, land.pos.y, land.tile.name()),
+            |land| match land.tile.object() {
+                Some(object) => format!(
+                    "{}, {}   {}   {object}",
+                    land.pos.x,
+                    land.pos.y,
+                    land.tile.name()
+                ),
+                None => format!("{}, {}   {}", land.pos.x, land.pos.y, land.tile.name()),
+            },
         ),
         land.map_or_else(
             || "-".to_string(),
@@ -167,6 +177,27 @@ mod tests {
         assert_eq!(readout[0], "100, 70   soil_low:grass_low");
         assert!(readout[1].starts_with("chunk 1/1   capacity "));
         assert!(readout[1].ends_with("   settleable"));
+    }
+
+    #[test]
+    fn a_tree_or_a_deposit_is_named_after_the_tile() {
+        let forest = Land {
+            pos: TilePos::new(3, 4),
+            tile: Tile::new(Ground::SoilHigh, Overlay::Birch).with_flora(Some(Flora::Tree)),
+        };
+        let vein = Land {
+            pos: TilePos::new(5, 6),
+            tile: Tile::bare(Ground::Hills).with_ore(Some(Ore::Gold)),
+        };
+
+        assert_eq!(
+            lines(Some(forest), &survey(), 42, (448, 448), 96.0)[0],
+            "3, 4   soil_high:birch_high   tree"
+        );
+        assert_eq!(
+            lines(Some(vein), &survey(), 42, (448, 448), 96.0)[0],
+            "5, 6   hills   gold"
+        );
     }
 
     #[test]

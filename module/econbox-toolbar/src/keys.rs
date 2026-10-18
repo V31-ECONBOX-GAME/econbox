@@ -1,8 +1,10 @@
 //! The keyboard and the wheel: tabs, the button cursor, saved slots, and the modifier wheel shortcuts.
 
 use crate::bar::{Scroll, WHEEL_STEP, bring_into_view, cursor_canvas, over_track_band, place_of};
-use crate::catalog::{Item, STRIP, TabId, find, home_of, tab};
+use crate::catalog::{Item, TabId, find, home_of, tab};
 use crate::layout::{TOP_ROW, arrange};
+use crate::sound::Cue;
+use crate::strip::StripOrder;
 use crate::{Controls, KeyCursor, Notice, OpenWindow, Shown, Slots};
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
@@ -47,17 +49,6 @@ pub fn shift(keys: &ButtonInput<KeyCode>) -> bool {
 
 pub fn alt(keys: &ButtonInput<KeyCode>) -> bool {
     keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-}
-
-pub fn next_tab(shown: TabId, backwards: bool) -> TabId {
-    let at = STRIP.iter().position(|id| *id == shown);
-
-    match (at, backwards) {
-        (None, false) => STRIP[0],
-        (None, true) => STRIP[STRIP.len() - 1],
-        (Some(at), false) => STRIP[(at + 1) % STRIP.len()],
-        (Some(at), true) => STRIP[(at + STRIP.len() - 1) % STRIP.len()],
-    }
 }
 
 pub fn walk(id: TabId, from: Option<&str>, step: Step) -> Option<&'static str> {
@@ -135,6 +126,8 @@ pub fn hotkeys(
     mut slots: ResMut<Slots>,
     mut cursor: ResMut<KeyCursor>,
     mut scroll: ResMut<Scroll>,
+    order: Res<StripOrder>,
+    mut cues: MessageWriter<Cue>,
     mut undo: MessageWriter<Undo>,
     mut held: Local<f32>,
 ) {
@@ -150,6 +143,7 @@ pub fn hotkeys(
             cursor.0 = None;
         } else if shown.0 != TabId::Main {
             shown.0 = TabId::Main;
+            cues.write(Cue::Slide);
         }
         return;
     }
@@ -167,8 +161,9 @@ pub fn hotkeys(
     }
 
     if keys.just_pressed(KeyCode::Tab) {
-        let next = next_tab(shown.0, shift(&keys));
+        let next = order.next(shown.0, shift(&keys));
         shown.0 = next;
+        cues.write(Cue::Slide);
         let definition = tab(next);
         controls.notices.write(Notice(format!(
             "{}\n{}",
@@ -263,6 +258,7 @@ pub fn hotkeys(
 
                 if !here && let Some(home) = home_of(def.id) {
                     shown.0 = home;
+                    cues.write(Cue::Slide);
                 }
 
                 scroll.centre_on = Some(def.id);
@@ -409,11 +405,13 @@ mod tests {
 
     #[test]
     fn tab_cycles_through_the_strip_and_wraps() {
-        assert_eq!(next_tab(TabId::Main, false), TabId::Creation);
-        assert_eq!(next_tab(TabId::Main, true), TabId::Other);
-        assert_eq!(next_tab(TabId::Other, false), TabId::Creation);
-        assert_eq!(next_tab(TabId::Units, false), TabId::Nature);
-        assert_eq!(next_tab(TabId::Creation, true), TabId::Other);
+        let order = StripOrder::default();
+
+        assert_eq!(order.next(TabId::Main, false), TabId::Creation);
+        assert_eq!(order.next(TabId::Main, true), TabId::Other);
+        assert_eq!(order.next(TabId::Other, false), TabId::Creation);
+        assert_eq!(order.next(TabId::Units, false), TabId::Nature);
+        assert_eq!(order.next(TabId::Creation, true), TabId::Other);
     }
 
     #[test]

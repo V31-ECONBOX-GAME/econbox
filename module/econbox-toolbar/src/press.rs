@@ -4,6 +4,9 @@ use crate::art::Kit;
 use crate::bar::{ArrowFace, Scroll, StripTab, page};
 use crate::catalog::{Def, Plate, TabId, tab};
 use crate::motion::{Curve, Pop, TILT, Tilt};
+use crate::size::Preview;
+use crate::sound::Cue;
+use crate::strip::StripDrag;
 use crate::tips::{Hover, Tip};
 use crate::{Chosen, Controls, KeyCursor, Notice, Shown};
 use bevy::picking::events::{PointerClick, PointerPress};
@@ -62,7 +65,14 @@ pub fn on_click(
     mut scroll: ResMut<Scroll>,
     mut controls: Controls,
     mut cursor: ResMut<KeyCursor>,
+    mut cues: MessageWriter<Cue>,
+    lifted: Res<StripDrag>,
+    preview: Res<Preview>,
 ) {
+    if preview.ghost {
+        return;
+    }
+
     let entity = click.entity;
     let primary = click.button == PointerButton::Primary;
 
@@ -74,6 +84,7 @@ pub fn on_click(
         }
 
         commands.entity(entity).insert(press_pop());
+        cues.write(Cue::Click);
         cursor.0 = None;
         controls.press(slot.def);
         return;
@@ -85,12 +96,19 @@ pub fn on_click(
 
     if let Ok(cell) = strip.get(entity) {
         click.propagate(false);
+
+        if lifted.moved {
+            return;
+        }
+
         commands.entity(entity).insert(hover_pop());
+        cues.write(Cue::Click);
 
         if shown.0 == cell.0 {
             shown.0 = TabId::Main;
         } else {
             shown.0 = cell.0;
+            cues.write(Cue::Slide);
             let definition = tab(cell.0);
             controls.notices.write(Notice(definition.title.to_string()));
         }
@@ -105,12 +123,15 @@ pub fn on_click(
         }
 
         commands.entity(entity).insert(press_pop());
+        cues.write(Cue::Click);
+        cues.write(Cue::Slide);
         shown.0 = TabId::Main;
         return;
     }
 
     if let Ok(face) = arrows.get(entity) {
         click.propagate(false);
+        cues.write(Cue::Click);
         page(&mut scroll, face.0);
     }
 }
@@ -202,6 +223,7 @@ pub fn hover(
     strip: Query<&StripTab>,
     backs: Query<(), With<BackButton>>,
     tips: Query<&Tip>,
+    preview: Res<Preview>,
     mut hover: ResMut<Hover>,
 ) {
     let blocked = buttons.get_pressed().next().is_some()
@@ -235,6 +257,10 @@ pub fn hover(
         };
 
         let Some(content) = content else { continue };
+
+        if pops && preview.ghost {
+            continue;
+        }
 
         if blocked {
             hover.pending = Some((entity, content));

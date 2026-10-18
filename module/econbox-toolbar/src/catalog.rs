@@ -278,8 +278,68 @@ mod tests {
             );
         }
 
-        for tool in [Tool::Inspect, Tool::Raise, Tool::Lower, Tool::Strip] {
+        for bomb in econbox_brush::BOMBS {
+            assert!(tools.contains(&Tool::Drop(bomb)), "{}", bomb.name());
+            assert_eq!(
+                find(bomb.name()).and_then(|def| def.tool()),
+                Some(Tool::Drop(bomb))
+            );
+        }
+
+        for wall in econbox_tile::WALLS {
+            assert_eq!(
+                find(wall.name()).and_then(|def| def.tool()),
+                Some(Tool::Wall(wall))
+            );
+        }
+
+        for ore in econbox_tile::ORES {
+            assert!(tools.contains(&Tool::Ore(ore)), "{}", ore.name());
+        }
+
+        for tool in [
+            Tool::Inspect,
+            Tool::Raise,
+            Tool::Lower,
+            Tool::Strip,
+            Tool::Plant(econbox_tile::Flora::Tree),
+            Tool::Plant(econbox_tile::Flora::Bush),
+            Tool::Fell,
+            Tool::Mine,
+        ] {
             assert!(tools.contains(&tool), "{tool:?}");
+        }
+    }
+
+    #[test]
+    fn every_spawn_button_shows_the_species_it_drops() {
+        for def in all() {
+            if let Some(Tool::Spawn(species)) = def.tool() {
+                assert_eq!(def.kind, Kind::Spawn, "{}", def.id);
+                assert_eq!(def.look, Look::Creature(species), "{}", def.id);
+            }
+        }
+    }
+
+    #[test]
+    fn no_creature_button_waits_on_more_species() {
+        for def in buttons(TabId::Units) {
+            assert_ne!(def.missing(), Some("more species"), "{}", def.id);
+        }
+    }
+
+    #[test]
+    fn every_nature_seed_plant_and_deposit_is_live() {
+        for def in buttons(TabId::Nature) {
+            let id = def.id;
+
+            if id.starts_with("seeds_") || id.starts_with("ore_") || id.starts_with("fertilizer_") {
+                assert!(def.ready(), "{id}");
+            }
+        }
+
+        for id in ["fruit_bush", "axe", "pickaxe", "sickle"] {
+            assert!(find(id).is_some_and(Def::ready), "{id}");
         }
     }
 

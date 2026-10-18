@@ -3,3 +3,6 @@ name = "econbox"
 
 [logging.level]
 root = "info"
+
+[toolbar]
+size = 100

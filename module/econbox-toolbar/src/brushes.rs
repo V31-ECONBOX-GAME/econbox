@@ -5,6 +5,8 @@ use crate::bar::px;
 use crate::layout::BUTTON;
 use crate::motion::{Curve, Pop};
 use crate::press::press_pop;
+use crate::size::KeepSize;
+use crate::sound::Cue;
 use crate::tips::{TITLE, Tip, WINDOW_RATIO};
 use crate::{OpenWindow, Panel};
 use bevy::picking::events::PointerClick;
@@ -68,6 +70,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
     commands
         .spawn((
             BrushWindow,
+            KeepSize,
             GlobalZIndex(600),
             UiTransform::default(),
             Node {
@@ -237,6 +240,7 @@ pub fn on_click(
     shades: Query<(), With<Shade>>,
     mut brush: ResMut<Brush>,
     mut open: ResMut<OpenWindow>,
+    mut cues: MessageWriter<Cue>,
 ) {
     if click.button != PointerButton::Primary {
         return;
@@ -247,9 +251,14 @@ pub fn on_click(
     if let Ok(pick) = presets.get(entity) {
         click.propagate(false);
         commands.entity(entity).insert(press_pop());
+        cues.write(Cue::Click);
         brush.wear(PRESETS[pick.0]);
         open.0 = None;
-    } else if closes.get(entity).is_ok() || shades.get(entity).is_ok() {
+    } else if closes.contains(entity) {
+        click.propagate(false);
+        cues.write(Cue::Click);
+        open.0 = None;
+    } else if shades.contains(entity) {
         click.propagate(false);
         open.0 = None;
     }

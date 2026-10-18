@@ -4,6 +4,7 @@ use crate::art::{Kit, sliced};
 use crate::bar::{Scroll, cursor_canvas, px};
 use crate::catalog::Def;
 use crate::layout::{CANVAS_HEIGHT, WINDOW_CANVAS_HEIGHT};
+use crate::size::{KeepSize, kept_scale};
 use crate::{Notice, OpenWindow, UiHidden};
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
@@ -135,6 +136,7 @@ pub fn spawn(mut commands: Commands, kit: Option<Res<Kit>>) {
     commands
         .spawn((
             Card,
+            KeepSize,
             Pickable::IGNORE,
             GlobalZIndex(1000),
             Visibility::Hidden,
@@ -256,7 +258,6 @@ pub fn tooltip(
     wheel: Res<AccumulatedMouseScroll>,
     scroll: Res<Scroll>,
     windows: Query<&Window>,
-    scale: Res<UiScale>,
     hidden: Res<UiHidden>,
     mut hover: ResMut<Hover>,
     mut cards: Query<(&mut Node, &mut Visibility, &ComputedNode), With<Card>>,
@@ -283,7 +284,9 @@ pub fn tooltip(
     let Some(window) = windows.iter().next() else {
         return;
     };
-    let cursor = cursor_canvas(window, scale.0);
+    let scale = kept_scale(Vec2::new(window.width(), window.height()));
+    let screen = Vec2::new(window.width(), window.height()) / scale;
+    let cursor = cursor_canvas(window, scale);
 
     if let Some((waited, from)) = hover.leaving {
         let from = if waited == 0.0 {
@@ -291,7 +294,7 @@ pub fn tooltip(
         } else {
             from
         };
-        let drifted = cursor.is_some_and(|at| at.distance(from) * scale.0 > LEAVE_DRIFT);
+        let drifted = cursor.is_some_and(|at| at.distance(from) * scale > LEAVE_DRIFT);
         let waited = waited + dt.max(f32::EPSILON);
 
         if waited >= LEAVE_DELAY || drifted {
@@ -327,7 +330,6 @@ pub fn tooltip(
 
         let Some(at) = cursor else { continue };
         let size = computed.size() * computed.inverse_scale_factor();
-        let screen = Vec2::new(window.width(), window.height()) / scale.0;
         let width = size.x.max(WIDTH);
         let height = size.y;
         let left = (at.x - width * 0.5).clamp(2.0, (screen.x - width - 2.0).max(2.0));
@@ -429,9 +431,11 @@ mod tests {
         );
         assert!(!wolf.warn);
 
-        let tnt = Tip::of(find("tnt").expect("tnt"));
-        assert!(tnt.warn);
-        assert!(tnt.foot.unwrap().contains("explosives"));
+        let fuse = Tip::of(find("fuse").expect("fuse"));
+        assert!(fuse.warn);
+        assert!(fuse.foot.unwrap().contains("fuses"));
+
+        assert!(!Tip::of(find("tnt").expect("tnt")).warn);
     }
 
     #[test]

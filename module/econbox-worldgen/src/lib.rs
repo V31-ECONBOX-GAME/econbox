@@ -48,12 +48,13 @@ const WATER_BANDS: [(f32, Ground); 3] = [
     (1.00, Ground::ShallowWaters),
 ];
 
-const LAND_BANDS: [(f32, Ground); 5] = [
+const LAND_BANDS: [(f32, Ground); 6] = [
     (0.13, Ground::Sand),
     (0.40, Ground::SoilLow),
     (0.79, Ground::SoilHigh),
     (0.93, Ground::Hills),
-    (1.00, Ground::Mountains),
+    (0.985, Ground::Mountains),
+    (1.00, Ground::Summit),
 ];
 
 pub fn generate(config: WorldConfig) -> TileMap {
@@ -199,6 +200,7 @@ mod tests {
             Ground::SoilHigh,
             Ground::Hills,
             Ground::Mountains,
+            Ground::Summit,
         ] {
             assert!(counts.get(&ground).copied().unwrap_or(0) > 0, "{ground:?}");
         }
@@ -213,6 +215,7 @@ mod tests {
         assert!(of(Ground::DeepOcean) > of(Ground::ShallowWaters));
         assert!(of(Ground::SoilHigh) > of(Ground::Mountains));
         assert!(of(Ground::Hills) > of(Ground::Mountains));
+        assert!(of(Ground::Mountains) > of(Ground::Summit));
     }
 
     #[test]

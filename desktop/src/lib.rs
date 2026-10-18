@@ -3,15 +3,16 @@ pub mod hud;
 pub mod prelude;
 pub mod world;
 
-use config::properties::{self, ApplicationProperties, LoggingProperties};
+use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
 use config::{logs, windows};
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
+use econbox_flora::FloraPlugin;
 use econbox_tileview::TileViewPlugin;
-use econbox_toolbar::ToolbarPlugin;
+use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
 use prelude::*;
 
@@ -28,6 +29,7 @@ pub fn app_with(source: &Config) -> App {
     let application: ApplicationProperties =
         source.get(properties::APPLICATION).unwrap_or_default();
     let logging: LoggingProperties = source.get(properties::LOGGING).unwrap_or_default();
+    let toolbar: ToolbarProperties = source.get(properties::TOOLBAR).unwrap_or_default();
 
     let plugins = DefaultPlugins
         .set(windows::plugin(application))
@@ -39,6 +41,7 @@ pub fn app_with(source: &Config) -> App {
     let mut app = App::new();
     app.add_plugins(plugins)
         .insert_resource(ClearColor(ocean()))
+        .insert_resource(BarSize::new(toolbar.size))
         .add_plugins((
             CameraPlugin,
             ClockPlugin,
@@ -46,16 +49,29 @@ pub fn app_with(source: &Config) -> App {
             CursorPlugin,
             CreaturePlugin,
             BrushPlugin,
+            FloraPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin));
 
     #[cfg(feature = "dev")]
     {
         app.add_plugins(bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default());
-        app.add_systems(Update, snapshot);
+        app.add_systems(Update, (keep_fps_size, snapshot));
     }
 
     app
+}
+
+#[cfg(feature = "dev")]
+fn keep_fps_size(
+    mut commands: Commands,
+    roots: Query<(Entity, &GlobalZIndex), Added<GlobalZIndex>>,
+) {
+    for (entity, layer) in &roots {
+        if layer.0 == bevy::dev_tools::fps_overlay::FPS_OVERLAY_ZINDEX {
+            commands.entity(entity).insert(econbox_toolbar::KeepSize);
+        }
+    }
 }
 
 #[cfg(feature = "dev")]
