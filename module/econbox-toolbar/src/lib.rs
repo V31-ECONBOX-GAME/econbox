@@ -205,6 +205,7 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<bar::Scroll>()
             .init_resource::<tips::Hover>()
             .init_resource::<pointer::Grace>()
+            .init_resource::<econbox_camera::WindowLock>()
             .init_resource::<BarSize>()
             .init_resource::<size::Preview>()
             .init_resource::<StripOrder>()
@@ -250,7 +251,11 @@ impl Plugin for ToolbarPlugin {
                 )
                     .chain(),
             )
-            .add_systems(PreUpdate, pointer::over_ui.after(PickingSystems::Hover))
+            .add_systems(
+                PreUpdate,
+                (pointer::over_ui, windows::lock_camera, strip::hint_cursor)
+                    .after(PickingSystems::Hover),
+            )
             .add_systems(
                 Update,
                 (

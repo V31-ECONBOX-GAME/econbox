@@ -5,6 +5,7 @@ use crate::catalog::{STRIP, TabId};
 use crate::layout::{STRIP_BOTTOM, STRIP_CELL_HEIGHT, STRIP_CELL_WIDTH};
 use crate::{OpenWindow, UiHidden};
 use bevy::prelude::*;
+use econbox_cursor::CursorHints;
 
 pub const HOLD: f32 = 0.25;
 pub const FOLLOW: f32 = 10.0;
@@ -218,6 +219,15 @@ pub fn drag(
         if *layer != z {
             *layer = z;
         }
+    }
+}
+
+pub fn hint_cursor(drag: Res<StripDrag>, hints: Option<ResMut<CursorHints>>) {
+    let Some(mut hints) = hints else { return };
+    let dragging = drag.lifted().is_some();
+
+    if hints.dragging_item != dragging {
+        hints.dragging_item = dragging;
     }
 }
 

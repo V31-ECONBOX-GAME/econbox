@@ -21,6 +21,7 @@ enum Step {
     Press(Spot),
     Release,
     Drag(Spot, Spot),
+    Pan(Spot, Spot),
     Key(KeyCode),
     Down(KeyCode),
     Up(KeyCode),
@@ -45,7 +46,7 @@ struct Tour {
     at: usize,
     waiting: f32,
     out: PathBuf,
-    drag: Option<(Vec2, Vec2, u32)>,
+    drag: Option<(Vec2, Vec2, u32, MouseButton)>,
 }
 
 fn button_centre(id: TabId, button: &str) -> Vec2 {
@@ -173,9 +174,55 @@ fn settings_script() -> Vec<Step> {
     steps
 }
 
+fn camera_script() -> Vec<Step> {
+    use Spot::*;
+    use Step::*;
+
+    let map = Window(0.0, 60.0);
+    let mut steps = vec![
+        Resize(1240.0, 719.0),
+        Wait(90),
+        Point(map),
+        Wait(10),
+        Shot("c01-opening"),
+    ];
+
+    for _ in 0..16 {
+        steps.extend([Wheel(1.0), Wait(4)]);
+    }
+    steps.extend([Wait(60), Shot("c02-closest")]);
+
+    for _ in 0..30 {
+        steps.extend([Wheel(-1.0), Wait(4)]);
+    }
+    steps.extend([Wait(60), Shot("c03-farthest")]);
+
+    for _ in 0..6 {
+        steps.extend([Wheel(1.0), Wait(4)]);
+    }
+    steps.extend([
+        Wait(60),
+        Shot("c04-six-notches-in"),
+        Down(KeyCode::KeyD),
+        Wait(30),
+        Up(KeyCode::KeyD),
+        Wait(40),
+        Shot("c05-after-key-pan"),
+        Pan(Window(0.0, 60.0), Window(-120.0, 60.0)),
+        Wait(1),
+        Shot("c06-released"),
+        Wait(60),
+        Shot("c07-after-glide"),
+        Wait(10),
+    ]);
+    steps
+}
+
 fn script() -> Vec<Step> {
-    if std::env::var("ECONBOX_TOUR_SCRIPT").as_deref() == Ok("settings") {
-        return settings_script();
+    match std::env::var("ECONBOX_TOUR_SCRIPT").as_deref() {
+        Ok("settings") => return settings_script(),
+        Ok("camera") => return camera_script(),
+        _ => {}
     }
 
     use Spot::*;
@@ -375,9 +422,10 @@ fn drive(
 
     let press = |events: &mut MessageWriter<WindowEvent>,
                  buttons: &mut MessageWriter<MouseButtonInput>,
-                 state: ButtonState| {
+                 state: ButtonState,
+                 button: MouseButton| {
         let input = MouseButtonInput {
-            button: MouseButton::Left,
+            button,
             state,
             window: entity,
         };
@@ -385,20 +433,30 @@ fn drive(
         events.write(WindowEvent::MouseButtonInput(input));
     };
 
-    if let Some((from, to, frame)) = tour.drag {
+    if let Some((from, to, frame, button)) = tour.drag {
         let total = 20;
         let t = frame as f32 / total as f32;
         point(&mut window, &mut window_events, from.lerp(to, t));
 
         if frame == 0 {
-            press(&mut window_events, &mut buttons, ButtonState::Pressed);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Pressed,
+                button,
+            );
         }
 
         if frame >= total {
-            press(&mut window_events, &mut buttons, ButtonState::Released);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Released,
+                button,
+            );
             tour.drag = None;
         } else {
-            tour.drag = Some((from, to, frame + 1));
+            tour.drag = Some((from, to, frame + 1, button));
         }
         return;
     }
@@ -427,7 +485,12 @@ fn drive(
                 &mut window_events,
                 resolve(spot, size, *bar, &order),
             );
-            press(&mut window_events, &mut buttons, ButtonState::Pressed);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Pressed,
+                MouseButton::Left,
+            );
             let at = tour.at;
             tour.steps.insert(at, Step::Wait(2));
             tour.steps.insert(at + 1, Step::Key(KeyCode::F24));
@@ -438,20 +501,44 @@ fn drive(
                 &mut window_events,
                 resolve(spot, size, *bar, &order),
             );
-            press(&mut window_events, &mut buttons, ButtonState::Pressed);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Pressed,
+                MouseButton::Left,
+            );
         }
         Step::Release => {
-            press(&mut window_events, &mut buttons, ButtonState::Released);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Released,
+                MouseButton::Left,
+            );
         }
         Step::Drag(from, to) => {
             tour.drag = Some((
                 resolve(from, size, *bar, &order),
                 resolve(to, size, *bar, &order),
                 0,
+                MouseButton::Left,
+            ));
+        }
+        Step::Pan(from, to) => {
+            tour.drag = Some((
+                resolve(from, size, *bar, &order),
+                resolve(to, size, *bar, &order),
+                0,
+                MouseButton::Right,
             ));
         }
         Step::Key(KeyCode::F24) => {
-            press(&mut window_events, &mut buttons, ButtonState::Released);
+            press(
+                &mut window_events,
+                &mut buttons,
+                ButtonState::Released,
+                MouseButton::Left,
+            );
         }
         Step::Wheel(y) => {
             let wheel = MouseWheel {
