@@ -4,6 +4,7 @@ pub mod art;
 pub mod compose;
 pub mod look;
 pub mod quality;
+pub mod sleek;
 pub mod view;
 
 use bevy::asset::embedded_asset;
@@ -14,6 +15,7 @@ use econbox_tilemap::Painted;
 use econbox_worldgen::{WorldConfig, generate};
 
 pub use quality::{MapMode, Runup};
+pub use sleek::{ScreenEffects, ScreenOptions, SleekPlugin};
 pub use view::{
     ChunkMaterial, Drawn, FLASH_LAYER, MAP_LAYER, MapLayer, TILES_LAYER, TileChunk, world_size,
 };
@@ -43,7 +45,7 @@ impl Plugin for TileViewPlugin {
     fn build(&self, app: &mut App) {
         embedded_asset!(app, "chunk.wgsl");
 
-        app.add_plugins(Material2dPlugin::<ChunkMaterial>::default())
+        app.add_plugins((Material2dPlugin::<ChunkMaterial>::default(), SleekPlugin))
             .init_resource::<WorldSeed>()
             .init_resource::<WorldSettings>()
             .init_resource::<MapMode>()

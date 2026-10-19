@@ -11,7 +11,7 @@ use econbox_clock::ClockPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_flora::FloraPlugin;
-use econbox_tileview::TileViewPlugin;
+use econbox_tileview::{ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
 use prelude::*;
@@ -56,7 +56,8 @@ pub fn app_with(source: &Config) -> App {
             BrushPlugin,
             FloraPlugin,
         ))
-        .add_plugins((HudPlugin, ToolbarPlugin));
+        .add_plugins((HudPlugin, ToolbarPlugin))
+        .add_systems(Update, screen_options);
 
     #[cfg(feature = "dev")]
     {
@@ -101,6 +102,19 @@ fn snapshot(
     commands
         .spawn(Screenshot::primary_window())
         .observe(save_to_disk(path));
+}
+
+fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<ScreenOptions>) {
+    if !options.is_changed() {
+        return;
+    }
+
+    let wanted = ScreenOptions {
+        bloom: options.on("bloom"),
+        vignette: options.on("vignette"),
+        transition: options.on("minimap_transition_animation"),
+    };
+    screen.set_if_neq(wanted);
 }
 
 pub fn headless_app() -> App {

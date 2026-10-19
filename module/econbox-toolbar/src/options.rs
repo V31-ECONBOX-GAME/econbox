@@ -232,7 +232,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         G(Glyph::Eye),
-        Some("screen effects"),
+        None,
     ),
     toggle(
         "bloom",
@@ -241,7 +241,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         I(Icon::Sun),
-        Some("screen effects"),
+        None,
     ),
     toggle(
         "smoke",
@@ -286,7 +286,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         G(Glyph::MapPen),
-        Some("map modes"),
+        None,
     ),
     toggle(
         "age_particles",

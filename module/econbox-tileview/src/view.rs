@@ -302,6 +302,7 @@ pub fn repaint(
 pub fn switch(
     camera: Option<Single<&Projection, With<WorldCamera>>>,
     time: Res<Time>,
+    options: Res<crate::sleek::ScreenOptions>,
     mut mode: ResMut<MapMode>,
     mut layers: Query<(&mut Sprite, &mut Visibility), (With<MapLayer>, Without<SwitchFlash>)>,
     mut flashes: Query<(&mut Sprite, &mut Visibility), (With<SwitchFlash>, Without<MapLayer>)>,
@@ -317,6 +318,9 @@ pub fn switch(
     }
 
     mode.advance(time.delta_secs());
+    if !options.transition {
+        mode.snap();
+    }
 
     for (mut sprite, mut visibility) in &mut layers {
         sprite.color = Color::srgba(1.0, 1.0, 1.0, mode.map_alpha());

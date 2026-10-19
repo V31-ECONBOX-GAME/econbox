@@ -75,6 +75,10 @@ impl MapMode {
         self.flash = (self.flash - seconds * SWITCH_FADE).max(0.0);
     }
 
+    pub fn snap(&mut self) {
+        self.factor = if self.low_res { 1.0 } else { 0.0 };
+    }
+
     pub fn tiles_on(&self) -> bool {
         !self.low_res
     }
