@@ -275,7 +275,7 @@ fn a_spawn_tool_leaves_the_ground_exactly_as_it_found_it() {
 }
 
 #[test]
-fn an_inspect_tool_leaves_the_left_button_to_the_camera_and_a_brush_takes_it() {
+fn only_the_inspect_tool_lets_the_cursor_grab_the_map() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(ClockPlugin)
@@ -291,9 +291,9 @@ fn an_inspect_tool_leaves_the_left_button_to_the_camera_and_a_brush_takes_it() {
         .insert_resource(Hovered::default());
 
     app.update();
-    assert!(app.world().resource::<Panning>().with_left);
+    assert!(app.world().resource::<Panning>().can_drag_map);
 
     app.world_mut().resource_mut::<Brush>().tool = Tool::Spawn(Species::Cat);
     app.update();
-    assert!(!app.world().resource::<Panning>().with_left);
+    assert!(!app.world().resource::<Panning>().can_drag_map);
 }

@@ -11,7 +11,7 @@ use econbox_art::Icon;
 use econbox_camera::Panning;
 pub use econbox_camera::PointerOverUi;
 use econbox_creature::{Effect, Spawn, Species, Strike};
-use econbox_cursor::Hovered;
+use econbox_cursor::{CursorHints, HoldAnimation, Hovered};
 use econbox_tile::{Flora, Ground, Ore, Overlay, Tile, Wall};
 use econbox_tilemap::{Painted, TileMap, TilePos};
 use std::collections::{HashSet, VecDeque};
@@ -98,6 +98,27 @@ pub struct Touch {
 }
 
 impl Power {
+    pub fn hold_animation(self) -> HoldAnimation {
+        match self {
+            Self::Deluge
+            | Self::Frost
+            | Self::Seed
+            | Self::Bloom
+            | Self::Rain
+            | Self::Drought
+            | Self::Fire
+            | Self::Acid
+            | Self::Volcano
+            | Self::Bless
+            | Self::Curse
+            | Self::Purge => HoldAnimation::Sprinkle,
+            Self::Sponge | Self::Mound | Self::Pit | Self::Level | Self::Smooth => {
+                HoldAnimation::Draw
+            }
+            Self::Quake | Self::Lightning | Self::Bomb | Self::Meteor => HoldAnimation::Default,
+        }
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Sponge => "sponge",
@@ -566,6 +587,21 @@ impl Tool {
         !matches!(self, Self::Inspect)
     }
 
+    pub fn hold_animation(self) -> HoldAnimation {
+        match self {
+            Self::Ground(_) | Self::Raise | Self::Lower | Self::Strip => HoldAnimation::Draw,
+            Self::Overlay(_) | Self::Plant(_) => HoldAnimation::Sprinkle,
+            Self::Power(power) => power.hold_animation(),
+            Self::Inspect
+            | Self::Spawn(_)
+            | Self::Fell
+            | Self::Ore(_)
+            | Self::Mine
+            | Self::Wall(_)
+            | Self::Drop(_) => HoldAnimation::Default,
+        }
+    }
+
     pub fn name(self) -> String {
         match self {
             Self::Inspect => "inspect".to_string(),
@@ -897,11 +933,18 @@ impl Plugin for BrushPlugin {
     }
 }
 
-fn hold_pan(brush: Res<Brush>, mut panning: ResMut<Panning>) {
-    let with_left = !brush.tool.holds();
+fn hold_pan(brush: Res<Brush>, mut panning: ResMut<Panning>, hints: Option<ResMut<CursorHints>>) {
+    let can_drag_map = !brush.tool.holds();
 
-    if panning.with_left != with_left {
-        panning.with_left = with_left;
+    if panning.can_drag_map != can_drag_map {
+        panning.can_drag_map = can_drag_map;
+    }
+
+    if let Some(mut hints) = hints {
+        let hold = brush.tool.hold_animation();
+        if hints.hold != hold {
+            hints.hold = hold;
+        }
     }
 }
 
