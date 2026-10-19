@@ -117,7 +117,8 @@ mod tests {
     #[test]
     fn the_world_bounds_follow_the_configured_map_size_before_startup() {
         let mut app = App::new();
-        app.insert_resource(WorldBounds::default())
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .insert_resource(WorldBounds::default())
             .add_plugins(TileViewPlugin);
 
         let bounds = app.world().resource::<WorldBounds>();

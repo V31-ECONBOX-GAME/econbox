@@ -1059,5 +1059,4 @@ mod tests {
         assert_eq!(Ground::SoilLow.rank(), Rank::Low);
         assert_eq!(Ground::Sand.rank(), Rank::Nothing);
     }
-
 }

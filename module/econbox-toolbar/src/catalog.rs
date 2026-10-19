@@ -5,6 +5,7 @@ use crate::tabs::TABS;
 use econbox_art::ui::TabMark;
 use econbox_art::{Glyph, Icon, Mark, Stance};
 use econbox_brush::Tool;
+use econbox_clouds::CloudKind;
 use econbox_creature::Species;
 use econbox_tile::{Ground, Overlay};
 
@@ -24,6 +25,7 @@ pub enum Act {
     Clock,
     HideUi,
     Window(Panel),
+    Cloud(CloudKind),
     Planned(&'static str),
 }
 
@@ -90,6 +92,14 @@ impl Def {
     pub fn tool(&self) -> Option<Tool> {
         match self.act {
             Act::Tool(tool) => Some(tool),
+            Act::Cloud(_) => Some(Tool::Special),
+            _ => None,
+        }
+    }
+
+    pub fn cloud(&self) -> Option<CloudKind> {
+        match self.act {
+            Act::Cloud(kind) => Some(kind),
             _ => None,
         }
     }

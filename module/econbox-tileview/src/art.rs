@@ -714,6 +714,13 @@ pub fn flora(kind: Flora, cover: [u8; 3], variant: u8) -> Pixmap {
             map.spans(&[(3, 2, 2), (4, 2, 2)], scale(BARK, 1.1));
             map
         }
+        Flora::Plant => {
+            let mut map = Pixmap::blank(6, 5, 1, 1);
+            map.spans(&[(0, 2, 2)], BERRY);
+            map.spans(&[(1, 1, 3)], light);
+            map.spans(&[(2, 2, 2), (3, 2, 2)], dark);
+            map
+        }
     }
 }
 

@@ -176,5 +176,4 @@ mod tests {
         assert_eq!(map.height_at(2, 2), 211);
         assert_eq!(map.height_at(1, 2), 128);
     }
-
 }

@@ -146,8 +146,8 @@ fn drive(
             tour.frames = 0;
         }
         Step::Span(tiles) => {
-            zoom.span = tiles * TILE_SIZE;
-            zoom.target = tiles * TILE_SIZE;
+            zoom.size = tiles * 0.5;
+            zoom.target = tiles * 0.5;
         }
         Step::Look(dx, dy) => {
             if let (Some(map), Some(spot)) = (map.as_deref(), tour.spot) {

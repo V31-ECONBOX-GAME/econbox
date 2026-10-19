@@ -2646,6 +2646,7 @@ dependencies = [
  "econbox-brush",
  "econbox-camera",
  "econbox-clock",
+ "econbox-clouds",
  "econbox-creature",
  "econbox-cursor",
  "econbox-tile",
