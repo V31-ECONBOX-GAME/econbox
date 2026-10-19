@@ -38,15 +38,28 @@ pub struct TileMap {
     pub width: u32,
     pub height: u32,
     pub tiles: Vec<Tile>,
+    pub heights: Vec<u8>,
 }
 
 impl TileMap {
     pub fn filled(width: u32, height: u32, tile: Tile) -> Self {
+        let cells = (width * height) as usize;
+
         Self {
             width,
             height,
-            tiles: vec![tile; (width * height) as usize],
+            tiles: vec![tile; cells],
+            heights: vec![tile.ground.height_min().unwrap_or(0); cells],
         }
+    }
+
+    pub fn height_at(&self, x: u32, y: u32) -> u8 {
+        self.heights[self.index(x, y)]
+    }
+
+    pub fn set_height(&mut self, x: u32, y: u32, height: u8) {
+        let index = self.index(x, y);
+        self.heights[index] = height;
     }
 
     pub fn index(&self, x: u32, y: u32) -> usize {
@@ -166,6 +179,19 @@ mod tests {
 
         assert_eq!(map.at(3, 5), tile);
         assert_eq!(map.at(3, 4), Tile::default());
+    }
+
+    #[test]
+    fn every_tile_keeps_a_worldbox_height() {
+        let mut map = TileMap::filled(4, 4, Tile::bare(Ground::SoilHigh));
+
+        assert_eq!(map.heights.len(), map.cells());
+        assert_eq!(map.height_at(2, 2), 128);
+
+        map.set_height(2, 2, 211);
+
+        assert_eq!(map.height_at(2, 2), 211);
+        assert_eq!(map.height_at(1, 2), 128);
     }
 
     #[test]

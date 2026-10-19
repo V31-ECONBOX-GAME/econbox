@@ -43,6 +43,9 @@ impl Plugin for TileViewPlugin {
             .add_message::<Painted>()
             .add_systems(Startup, spawn)
             .add_systems(Update, (rebuild, repaint).chain());
+
+        let settings = app.world().resource::<WorldSettings>().0;
+        app.insert_resource(WorldBounds::from_tiles(settings.width(), settings.height()));
     }
 }
 
@@ -212,6 +215,18 @@ mod tests {
         assert_eq!(data[at..at + 4], map.pixel(2, 1));
         assert_eq!(data[0..4], untouched);
         assert_ne!(data[at..at + 4], untouched);
+    }
+
+    #[test]
+    fn the_world_bounds_follow_the_configured_map_size_before_startup() {
+        let mut app = App::new();
+        app.insert_resource(WorldBounds::default())
+            .add_plugins(TileViewPlugin);
+
+        let bounds = app.world().resource::<WorldBounds>();
+
+        assert_eq!(bounds.width, 256.0 * TILE_SIZE);
+        assert_eq!(bounds.height, 256.0 * TILE_SIZE);
     }
 
     #[test]

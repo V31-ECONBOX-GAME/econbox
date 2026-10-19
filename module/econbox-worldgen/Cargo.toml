@@ -6,6 +6,7 @@ publish.workspace = true
 
 [dependencies]
 econbox-field = { workspace = true }
+econbox-noise = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 

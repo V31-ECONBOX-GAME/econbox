@@ -16,6 +16,35 @@ pub enum Ground {
     Lava3,
 }
 
+pub const MAX_HEIGHT: u8 = 255;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Layer {
+    Ocean,
+    Ground,
+    Block,
+    Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Rank {
+    Nothing,
+    Low,
+    High,
+}
+
+pub const GENERATOR_GROUNDS: [Ground; 9] = [
+    Ground::DeepOcean,
+    Ground::CloseOcean,
+    Ground::ShallowWaters,
+    Ground::Sand,
+    Ground::SoilLow,
+    Ground::SoilHigh,
+    Ground::Hills,
+    Ground::Mountains,
+    Ground::Summit,
+];
+
 pub const GROUNDS: [Ground; 11] = [
     Ground::DeepOcean,
     Ground::CloseOcean,
@@ -78,6 +107,116 @@ impl Ground {
             Self::Summit => 8,
             Self::Lava2 => 4,
             Self::Lava3 => 5,
+        }
+    }
+
+    pub fn height_min(self) -> Option<u8> {
+        match self {
+            Self::DeepOcean => Some(0),
+            Self::CloseOcean => Some(30),
+            Self::ShallowWaters => Some(70),
+            Self::Sand => Some(98),
+            Self::SoilLow => Some(108),
+            Self::SoilHigh => Some(128),
+            Self::Hills => Some(199),
+            Self::Mountains => Some(210),
+            Self::Summit => Some(230),
+            Self::Lava2 | Self::Lava3 => None,
+        }
+    }
+
+    pub fn additional_height(self) -> &'static [i32] {
+        match self {
+            Self::SoilHigh => &[15, 16, 17, 14, 13, 12, 11, 10],
+            Self::Hills => &[2, -6],
+            Self::Mountains | Self::Summit => &[2, 4],
+            _ => &[],
+        }
+    }
+
+    pub fn from_height(height: u8) -> Self {
+        GENERATOR_GROUNDS
+            .into_iter()
+            .fold(None, |found, ground| match (found, ground.height_min()) {
+                (None, Some(_)) => Some(ground),
+                (Some(_), Some(min)) if height >= min => Some(ground),
+                (found, _) => found,
+            })
+            .unwrap_or(Self::DeepOcean)
+    }
+
+    pub fn layer(self) -> Layer {
+        match self {
+            Self::DeepOcean | Self::CloseOcean | Self::ShallowWaters => Layer::Ocean,
+            Self::Sand | Self::SoilLow | Self::SoilHigh | Self::Hills => Layer::Ground,
+            Self::Mountains | Self::Summit => Layer::Block,
+            Self::Lava2 | Self::Lava3 => Layer::Lava,
+        }
+    }
+
+    pub fn rank(self) -> Rank {
+        match self {
+            Self::SoilLow => Rank::Low,
+            Self::SoilHigh => Rank::High,
+            _ => Rank::Nothing,
+        }
+    }
+
+    pub fn is_soil(self) -> bool {
+        matches!(self, Self::SoilLow | Self::SoilHigh)
+    }
+
+    pub fn is_rock(self) -> bool {
+        matches!(self, Self::Hills | Self::Mountains | Self::Summit)
+    }
+
+    pub fn decrease_to(self) -> Option<Self> {
+        match self {
+            Self::SoilLow => Some(Self::Sand),
+            Self::SoilHigh => Some(Self::SoilLow),
+            Self::Hills => Some(Self::SoilHigh),
+            Self::Mountains => Some(Self::Hills),
+            Self::Summit => Some(Self::Mountains),
+            Self::Lava2 | Self::Lava3 => Some(Self::Sand),
+            _ => None,
+        }
+    }
+
+    pub fn increase_to(self) -> Option<Self> {
+        match self {
+            Self::ShallowWaters => Some(Self::Sand),
+            Self::Sand => Some(Self::SoilLow),
+            Self::SoilLow => Some(Self::SoilHigh),
+            Self::SoilHigh => Some(Self::Hills),
+            Self::Hills => Some(Self::Mountains),
+            Self::Mountains => Some(Self::Summit),
+            Self::Lava2 | Self::Lava3 => Some(Self::Hills),
+            _ => None,
+        }
+    }
+
+    pub fn freeze_to(self) -> Option<&'static str> {
+        match self {
+            Self::ShallowWaters => Some("ice"),
+            Self::Sand => Some("snow_sand"),
+            Self::SoilLow => Some("frozen_low"),
+            Self::SoilHigh => Some("frozen_high"),
+            Self::Hills => Some("snow_hills"),
+            Self::Mountains => Some("snow_block"),
+            Self::Summit => Some("snow_summit"),
+            _ => None,
+        }
+    }
+
+    pub fn frozen_color(self) -> Option<[u8; 3]> {
+        match self {
+            Self::ShallowWaters => Some([0xa7, 0xd6, 0xf4]),
+            Self::Sand => Some([0xaf, 0xf5, 0xf1]),
+            Self::SoilLow => Some([0xba, 0xd5, 0xd3]),
+            Self::SoilHigh => Some([0xd3, 0xe4, 0xe3]),
+            Self::Hills => Some([0xe2, 0xed, 0xec]),
+            Self::Mountains | Self::Summit => Some([0xfc, 0xfd, 0xfd]),
+            _ => None,
         }
     }
 
@@ -295,9 +434,10 @@ pub enum Flora {
     Sapling,
     Tree,
     Bush,
+    Plant,
 }
 
-pub const FLORAS: [Flora; 3] = [Flora::Sapling, Flora::Tree, Flora::Bush];
+pub const FLORAS: [Flora; 4] = [Flora::Sapling, Flora::Tree, Flora::Bush, Flora::Plant];
 
 const BERRY: [u8; 3] = [0xc8, 0x34, 0x3c];
 
@@ -307,6 +447,7 @@ impl Flora {
             Self::Sapling => "sapling",
             Self::Tree => "tree",
             Self::Bush => "fruit_bush",
+            Self::Plant => "plant",
         }
     }
 
@@ -315,6 +456,7 @@ impl Flora {
             Self::Sapling => scale(cover, 0.82),
             Self::Tree => scale(cover, 0.58),
             Self::Bush => scale(cover, 0.7),
+            Self::Plant => scale(cover, 0.9),
         }
     }
 }
@@ -416,6 +558,7 @@ pub struct Tile {
     pub flora: Option<Flora>,
     pub ore: Option<Ore>,
     pub wall: Option<Wall>,
+    pub frozen: bool,
 }
 
 impl Tile {
@@ -430,6 +573,7 @@ impl Tile {
             flora: None,
             ore: None,
             wall: None,
+            frozen: false,
         }
     }
 
@@ -454,6 +598,13 @@ impl Tile {
     pub fn with_wall(self, wall: Option<Wall>) -> Self {
         Self {
             wall: wall.filter(|_| self.ground.takes_wall()),
+            ..self
+        }
+    }
+
+    pub fn with_frozen(self, frozen: bool) -> Self {
+        Self {
+            frozen: frozen && self.ground.freeze_to().is_some(),
             ..self
         }
     }
@@ -493,6 +644,10 @@ impl Tile {
     }
 
     pub fn cover(self) -> [u8; 3] {
+        if let Some(frozen) = self.ground.frozen_color().filter(|_| self.frozen) {
+            return frozen;
+        }
+
         self.overlay
             .color(self.ground.is_high())
             .unwrap_or_else(|| self.ground.color())
@@ -511,6 +666,10 @@ impl Tile {
     }
 
     pub fn name(self) -> String {
+        if let Some(top) = self.ground.freeze_to().filter(|_| self.frozen) {
+            return format!("{}:{top}", self.ground.name());
+        }
+
         match self.overlay {
             Overlay::Bare => self.ground.name().to_string(),
             overlay => format!(
@@ -919,7 +1078,7 @@ mod tests {
 
         assert_eq!(colours.len(), ORES.len());
         assert_eq!(names.len(), ORES.len());
-        assert_eq!(FLORAS.map(Flora::name).len(), 3);
+        assert_eq!(FLORAS.map(Flora::name).len(), 4);
     }
 
     #[test]
@@ -976,6 +1135,81 @@ mod tests {
 
         assert_eq!(names.len(), WALLS.len());
         assert_eq!(colours.len(), WALLS.len());
+    }
+
+    #[test]
+    fn the_height_bands_are_the_ones_the_worldbox_generator_uses() {
+        let bands = [
+            (0, Ground::DeepOcean),
+            (29, Ground::DeepOcean),
+            (30, Ground::CloseOcean),
+            (69, Ground::CloseOcean),
+            (70, Ground::ShallowWaters),
+            (97, Ground::ShallowWaters),
+            (98, Ground::Sand),
+            (107, Ground::Sand),
+            (108, Ground::SoilLow),
+            (127, Ground::SoilLow),
+            (128, Ground::SoilHigh),
+            (198, Ground::SoilHigh),
+            (199, Ground::Hills),
+            (209, Ground::Hills),
+            (210, Ground::Mountains),
+            (229, Ground::Mountains),
+            (230, Ground::Summit),
+            (255, Ground::Summit),
+        ];
+
+        for (height, ground) in bands {
+            assert_eq!(Ground::from_height(height), ground, "{height}");
+        }
+    }
+
+    #[test]
+    fn every_generator_ground_starts_where_its_height_band_starts() {
+        for ground in GENERATOR_GROUNDS {
+            let min = ground
+                .height_min()
+                .expect("a generator ground has a height");
+
+            assert_eq!(Ground::from_height(min), ground);
+        }
+        assert_eq!(Ground::Lava3.height_min(), None);
+    }
+
+    #[test]
+    fn only_high_soil_and_rock_lift_neighbouring_heights() {
+        assert_eq!(
+            Ground::SoilHigh.additional_height(),
+            &[15, 16, 17, 14, 13, 12, 11, 10]
+        );
+        assert_eq!(Ground::Hills.additional_height(), &[2, -6]);
+        assert_eq!(Ground::Mountains.additional_height(), &[2, 4]);
+        assert_eq!(Ground::Summit.additional_height(), &[2, 4]);
+        assert!(Ground::SoilLow.additional_height().is_empty());
+    }
+
+    #[test]
+    fn a_frozen_mountain_shows_snow_until_it_is_terraformed() {
+        let peak = Tile::bare(Ground::Mountains).with_frozen(true);
+
+        assert!(peak.frozen);
+        assert_eq!(peak.color(), [0xfc, 0xfd, 0xfd]);
+        assert_eq!(peak.name(), "mountains:snow_block");
+        assert!(!peak.with_ground(Ground::Hills).frozen);
+        assert!(!Tile::bare(Ground::DeepOcean).with_frozen(true).frozen);
+    }
+
+    #[test]
+    fn removing_a_mountain_steps_down_through_the_rock() {
+        assert_eq!(Ground::Summit.decrease_to(), Some(Ground::Mountains));
+        assert_eq!(Ground::Mountains.decrease_to(), Some(Ground::Hills));
+        assert_eq!(Ground::Hills.decrease_to(), Some(Ground::SoilHigh));
+        assert!(Ground::Summit.is_rock() && !Ground::SoilHigh.is_rock());
+        assert_eq!(Ground::Mountains.layer(), Layer::Block);
+        assert_eq!(Ground::Hills.layer(), Layer::Ground);
+        assert_eq!(Ground::SoilLow.rank(), Rank::Low);
+        assert_eq!(Ground::Sand.rank(), Rank::Nothing);
     }
 
     #[test]
