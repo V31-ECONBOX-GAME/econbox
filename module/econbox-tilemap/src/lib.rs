@@ -101,23 +101,6 @@ impl TileMap {
 
         counts
     }
-
-    pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
-        let [r, g, b] = self.at(x, y).textured(x, y);
-        [r, g, b, 255]
-    }
-
-    pub fn pixels(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(self.cells() * 4);
-
-        for y in 0..self.height {
-            for x in 0..self.width {
-                data.extend_from_slice(&self.pixel(x, y));
-            }
-        }
-
-        data
-    }
 }
 
 #[cfg(test)]
@@ -166,30 +149,5 @@ mod tests {
 
         assert_eq!(map.at(3, 5), tile);
         assert_eq!(map.at(3, 4), Tile::default());
-    }
-
-    #[test]
-    fn the_pixels_carry_one_rgba_per_tile() {
-        let map = TileMap::filled(4, 4, Tile::bare(Ground::Sand));
-
-        assert_eq!(map.pixels().len(), 4 * 4 * 4);
-    }
-
-    #[test]
-    fn one_pixel_is_the_textured_tile_plus_full_alpha() {
-        let map = TileMap::filled(2, 2, Tile::bare(Ground::Sand));
-        let [r, g, b] = Tile::bare(Ground::Sand).textured(1, 0);
-
-        assert_eq!(map.pixel(1, 0), [r, g, b, 255]);
-    }
-
-    #[test]
-    fn the_pixels_follow_the_textured_tile_colour() {
-        let mut map = TileMap::filled(2, 1, Tile::bare(Ground::Sand));
-        map.set(0, 0, Tile::bare(Ground::Mountains));
-        let pixels = map.pixels();
-
-        assert_eq!(&pixels[0..3], &Tile::bare(Ground::Mountains).textured(0, 0));
-        assert_eq!(&pixels[4..7], &Tile::bare(Ground::Sand).textured(1, 0));
     }
 }

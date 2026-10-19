@@ -179,24 +179,24 @@ impl Overlay {
             Self::Enchanted => ([0x8c, 0xdc, 0x6a], [0x76, 0xb1, 0x53]),
             Self::Infernal => ([0x9c, 0x36, 0x26], [0x68, 0x37, 0x2d]),
             Self::Pumpkin => ([0x8f, 0x93, 0x39], [0x69, 0x6c, 0x02]),
-            Self::Savanna => ([0xc3, 0xb0, 0x52], [0xa0, 0x8c, 0x3c]),
-            Self::Birch => ([0xb4, 0xcc, 0x8a], [0x94, 0xac, 0x6e]),
-            Self::Maple => ([0xcf, 0x7a, 0x3a], [0xa8, 0x5a, 0x2a]),
-            Self::Swamp => ([0x56, 0x70, 0x4a], [0x3f, 0x56, 0x38]),
-            Self::Blight => ([0x6f, 0x4a, 0x64], [0x52, 0x34, 0x48]),
-            Self::Mushroom => ([0xa8, 0x66, 0x5a], [0x7f, 0x4a, 0x42]),
-            Self::Candy => ([0xee, 0x9f, 0xcf], [0xd2, 0x7c, 0xb2]),
-            Self::Garlic => ([0xd9, 0xd2, 0xb4], [0xbd, 0xb5, 0x94]),
-            Self::Lemon => ([0xd8, 0xd2, 0x4c], [0xb2, 0xad, 0x32]),
-            Self::Desert => ([0xe3, 0xc5, 0x85], [0xc9, 0xa8, 0x66]),
-            Self::Rockland => ([0x8e, 0x8f, 0x86], [0x72, 0x73, 0x6b]),
-            Self::Crystal => ([0x7f, 0xd8, 0xde], [0x5c, 0xb4, 0xc0]),
-            Self::Frost => ([0xd6, 0xea, 0xf2], [0xb4, 0xcf, 0xdc]),
-            Self::Flower => ([0xa6, 0xd0, 0x5e], [0x86, 0xb0, 0x48]),
-            Self::Starlight => ([0x8f, 0x86, 0xe0], [0x6f, 0x66, 0xc0]),
-            Self::Void => ([0x3f, 0x36, 0x56], [0x2a, 0x23, 0x40]),
-            Self::Paradox => ([0xc4, 0x6a, 0xd8], [0x9e, 0x4c, 0xb4]),
-            Self::Clover => ([0x3f, 0xae, 0x5a], [0x2c, 0x8a, 0x44]),
+            Self::Savanna => ([0xf0, 0xb1, 0x21], [0xcf, 0x93, 0x1b]),
+            Self::Birch => ([0x93, 0xcf, 0x3a], [0x76, 0xac, 0x2b]),
+            Self::Maple => ([0xb5, 0x7f, 0x22], [0xa7, 0x59, 0x24]),
+            Self::Swamp => ([0x4d, 0x48, 0x3e], [0x45, 0x3e, 0x34]),
+            Self::Blight => ([0x6f, 0x55, 0x6c], [0x53, 0x3f, 0x51]),
+            Self::Mushroom => ([0x67, 0x76, 0x42], [0x55, 0x63, 0x38]),
+            Self::Candy => ([0xff, 0x96, 0xb0], [0xfb, 0x87, 0xa4]),
+            Self::Garlic => ([0xac, 0xa9, 0x79], [0x8c, 0x8e, 0x65]),
+            Self::Lemon => ([0xd1, 0xe7, 0x71], [0x8a, 0xcf, 0x55]),
+            Self::Desert => ([0xe8, 0xc7, 0x6e], [0xe1, 0xba, 0x5a]),
+            Self::Rockland => ([0x8d, 0x8d, 0x8d], [0x7a, 0x7a, 0x7a]),
+            Self::Crystal => ([0x68, 0xea, 0xde], [0x5f, 0xd6, 0xcb]),
+            Self::Frost => ([0x99, 0xbc, 0xdb], [0xb4, 0xcf, 0xe5]),
+            Self::Flower => ([0x54, 0xcc, 0x3a], [0x39, 0xa3, 0x34]),
+            Self::Starlight => ([0xb5, 0x73, 0xda], [0x7f, 0x5d, 0xa2]),
+            Self::Void => ([0x62, 0x30, 0x79], [0x50, 0x22, 0x63]),
+            Self::Paradox => ([0x89, 0x69, 0x55], [0x74, 0x58, 0x44]),
+            Self::Clover => ([0x49, 0xab, 0x87], [0x3e, 0x8c, 0x7b]),
         };
 
         Some(if high { top } else { low })
@@ -270,24 +270,6 @@ impl Overlay {
     pub fn grows(self) -> bool {
         self.fertility() >= 0.25
     }
-
-    pub fn speck(self) -> u32 {
-        match self {
-            Self::Bare => 0,
-            Self::Desert | Self::Frost => 6,
-            Self::Rockland | Self::Void => 8,
-            Self::Infernal | Self::Garlic => 10,
-            Self::Pumpkin | Self::Savanna | Self::Crystal => 12,
-            Self::Enchanted | Self::Birch | Self::Candy | Self::Lemon => 14,
-            Self::Grass | Self::Blight => 16,
-            Self::Maple | Self::Starlight => 18,
-            Self::Mushroom | Self::Paradox => 20,
-            Self::Clover => 22,
-            Self::Swamp => 24,
-            Self::Flower => 26,
-            Self::Jungle => 30,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -298,8 +280,6 @@ pub enum Flora {
 }
 
 pub const FLORAS: [Flora; 3] = [Flora::Sapling, Flora::Tree, Flora::Bush];
-
-const BERRY: [u8; 3] = [0xc8, 0x34, 0x3c];
 
 impl Flora {
     pub fn name(self) -> &'static str {
@@ -398,13 +378,13 @@ impl Wall {
 
     pub fn color(self) -> [u8; 3] {
         match self {
-            Self::Order => [0x9a, 0xa0, 0xa8],
-            Self::Evil => [0x6a, 0x3c, 0x58],
-            Self::Ancient => [0xb8, 0xa2, 0x74],
-            Self::Wild => [0x9a, 0x68, 0x3a],
-            Self::Green => [0x58, 0x9c, 0x48],
-            Self::Iron => [0x6c, 0x78, 0x88],
-            Self::Light => [0xf0, 0xe0, 0x9a],
+            Self::Order => [0xa1, 0xb1, 0xa2],
+            Self::Evil => [0x9b, 0x3c, 0x4d],
+            Self::Ancient => [0x42, 0x5b, 0x78],
+            Self::Wild => [0xc6, 0x7d, 0x49],
+            Self::Green => [0x65, 0xa1, 0x3f],
+            Self::Iron => [0x59, 0x7d, 0x94],
+            Self::Light => [0xff, 0xf3, 0x49],
         }
     }
 }
@@ -530,83 +510,8 @@ impl Tile {
     }
 }
 
-const HASH_A: u32 = 0x27d4_eb2d;
-const HASH_B: u32 = 0x1656_67b1;
-
-fn hash(x: u32, y: u32) -> u32 {
-    let mut h = x.wrapping_mul(HASH_A) ^ y.wrapping_mul(HASH_B);
-    h ^= h >> 15;
-    h = h.wrapping_mul(0x2c1b_3c6d);
-    h ^= h >> 12;
-    h = h.wrapping_mul(0x297a_2d39);
-    h ^ (h >> 15)
-}
-
-fn nudge(channel: u8, by: i32) -> u8 {
-    (i32::from(channel) + by).clamp(0, 255) as u8
-}
-
 fn scale(color: [u8; 3], by: f32) -> [u8; 3] {
     color.map(|channel| (f32::from(channel) * by).clamp(0.0, 255.0) as u8)
-}
-
-impl Tile {
-    pub fn speck_chance(self) -> u32 {
-        if self.wall.is_some() {
-            return 0;
-        }
-
-        match (self.flora, self.ore) {
-            (Some(Flora::Tree), _) => 34,
-            (Some(_), _) => 20,
-            (None, Some(_)) => 0,
-            (None, None) => self.overlay.speck(),
-        }
-    }
-
-    pub fn grain(self) -> i32 {
-        match self.ground {
-            Ground::DeepOcean | Ground::CloseOcean => 4,
-            Ground::ShallowWaters => 7,
-            Ground::Sand => 9,
-            Ground::Hills | Ground::Mountains | Ground::Summit => 11,
-            _ => 14,
-        }
-    }
-
-    pub fn textured(self, x: u32, y: u32) -> [u8; 3] {
-        let noise = hash(x, y);
-        let base = self.color();
-
-        if self.wall.is_some() {
-            let by = (noise % 9) as i32 - 4;
-            return base.map(|channel| nudge(channel, by));
-        }
-
-        if self.flora == Some(Flora::Bush) && noise.is_multiple_of(3) {
-            return BERRY;
-        }
-
-        if self.ore.is_some() && noise.is_multiple_of(4) {
-            return scale(base, 1.18);
-        }
-
-        let speck = self.speck_chance();
-
-        if speck > 0 && noise % 100 < speck {
-            return scale(base, if noise.is_multiple_of(3) { 0.66 } else { 0.80 });
-        }
-
-        let grain = self.grain();
-        let step = (noise >> 9) % (grain as u32 * 2 + 1);
-        let by = step as i32 - grain;
-
-        [
-            nudge(base[0], by),
-            nudge(base[1], by),
-            nudge(base[2], (by as f32 * 0.7) as i32),
-        ]
-    }
 }
 
 #[cfg(test)]
@@ -745,23 +650,15 @@ mod tests {
     }
 
     #[test]
-    fn high_ground_wears_the_darker_shade_of_every_biome() {
-        for overlay in OVERLAYS.iter().skip(1) {
-            let low: u32 = overlay
-                .color(false)
-                .expect("low")
-                .map(u32::from)
-                .iter()
-                .sum();
-            let high: u32 = overlay
-                .color(true)
-                .expect("high")
-                .map(u32::from)
-                .iter()
-                .sum();
-
-            assert!(high < low, "{}", overlay.name());
-        }
+    fn the_biome_and_wall_colours_are_the_ones_worldbox_lists() {
+        assert_eq!(Overlay::Savanna.color(false), Some([0xf0, 0xb1, 0x21]));
+        assert_eq!(Overlay::Mushroom.color(true), Some([0x55, 0x63, 0x38]));
+        assert_eq!(Overlay::Frost.color(false), Some([0x99, 0xbc, 0xdb]));
+        assert_eq!(Overlay::Frost.color(true), Some([0xb4, 0xcf, 0xe5]));
+        assert_eq!(Overlay::Blight.color(false), Some([0x6f, 0x55, 0x6c]));
+        assert_eq!(Overlay::Void.color(true), Some([0x50, 0x22, 0x63]));
+        assert_eq!(Wall::Order.color(), [0xa1, 0xb1, 0xa2]);
+        assert_eq!(Wall::Light.color(), [0xff, 0xf3, 0x49]);
     }
 
     #[test]
@@ -777,54 +674,6 @@ mod tests {
                 overlay.name()
             );
         }
-    }
-
-    #[test]
-    fn texture_keeps_a_tile_close_to_its_own_colour() {
-        let tile = Tile::new(Ground::SoilLow, Overlay::Grass);
-        let base = tile.color();
-
-        for y in 0..64 {
-            for x in 0..64 {
-                let shade = tile.textured(x, y);
-
-                for channel in 0..3 {
-                    let drift = i32::from(shade[channel]) - i32::from(base[channel]);
-                    assert!(drift.abs() <= 90, "{drift} at {x},{y}");
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn texture_is_the_same_every_time_for_the_same_tile() {
-        let tile = Tile::new(Ground::SoilHigh, Overlay::Jungle);
-
-        assert_eq!(tile.textured(12, 34), tile.textured(12, 34));
-        assert_ne!(tile.textured(12, 34), tile.textured(13, 34));
-    }
-
-    #[test]
-    fn grass_is_speckled_but_the_open_sea_is_not() {
-        let grass = Tile::new(Ground::SoilLow, Overlay::Grass);
-        let sea = Tile::bare(Ground::DeepOcean);
-
-        assert!(grass.speck_chance() > 0);
-        assert_eq!(sea.speck_chance(), 0);
-        assert!(grass.grain() > sea.grain());
-    }
-
-    #[test]
-    fn a_patch_of_grass_shows_many_shades() {
-        let tile = Tile::new(Ground::SoilLow, Overlay::Grass);
-        let mut shades: Vec<_> = (0..32)
-            .flat_map(|y| (0..32).map(move |x| (x, y)))
-            .map(|(x, y)| tile.textured(x, y))
-            .collect();
-        shades.sort_unstable();
-        shades.dedup();
-
-        assert!(shades.len() > 12, "only {} shades", shades.len());
     }
 
     #[test]
@@ -905,7 +754,6 @@ mod tests {
         assert_eq!(vein.object(), Some("mythril"));
         assert_eq!(meadow.object(), None);
         assert_eq!(tree.name(), meadow.name());
-        assert!((0..30).any(|x| bush.textured(x, 0) == BERRY));
     }
 
     #[test]
@@ -976,19 +824,5 @@ mod tests {
 
         assert_eq!(names.len(), WALLS.len());
         assert_eq!(colours.len(), WALLS.len());
-    }
-
-    #[test]
-    fn a_wall_is_drawn_as_one_flat_block() {
-        let walled = Tile::bare(Ground::SoilLow).with_wall(Some(Wall::Light));
-        let base = Wall::Light.color();
-
-        for x in 0..32 {
-            let shade = walled.textured(x, 7);
-
-            for channel in 0..3 {
-                assert!((i32::from(shade[channel]) - i32::from(base[channel])).abs() <= 4);
-            }
-        }
     }
 }
