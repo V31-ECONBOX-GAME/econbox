@@ -26,7 +26,7 @@ fn main() {
 
     for y in 0..map.height {
         for x in 0..map.width {
-            out.extend_from_slice(&map.at(x, y).textured(x, y));
+            out.extend_from_slice(&map.at(x, y).color());
         }
     }
 
