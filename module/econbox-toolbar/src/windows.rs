@@ -15,6 +15,7 @@ use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::text::Justify;
 use econbox_art::Glyph;
+use econbox_camera::WindowLock;
 use std::f32::consts::PI;
 
 pub const ROOT_WIDTH: f32 = 222.0;
@@ -164,6 +165,17 @@ pub struct Critter {
 
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct ThumbDrag(pub Option<(Panel, f32, f32)>);
+
+pub fn lock_camera(open: Res<OpenWindow>, slides: Query<&Slide>, mut lock: ResMut<WindowLock>) {
+    let wanted = WindowLock {
+        active: open.0.is_some(),
+        animating: slides.iter().any(|slide| !slide.finished()),
+    };
+
+    if *lock != wanted {
+        *lock = wanted;
+    }
+}
 
 pub fn away(screen: Vec2, width: f32) -> f32 {
     screen.x * 0.5 + width * 0.5 + width * 0.2

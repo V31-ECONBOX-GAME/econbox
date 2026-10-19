@@ -4,14 +4,14 @@ use crate::art::{Kit, crisp};
 use crate::bar::px;
 use crate::layout::ICON;
 use crate::{Chosen, OpenWindow};
-use bevy::picking::hover::HoverMap;
+use bevy::picking::hover::{HoverMap, Hovered as Hoverable};
 use bevy::picking::pointer::PointerId;
 use bevy::prelude::*;
 use econbox_art::ui::Picture;
 use econbox_brush::{Brush, PointerOverUi, mask};
 use econbox_camera::TILE_SIZE;
 use econbox_creature::centre_of;
-use econbox_cursor::Hovered;
+use econbox_cursor::{CursorHints, Hovered};
 use econbox_tilemap::TileMap;
 
 pub const GRACE: f32 = 0.05;
@@ -77,14 +77,23 @@ pub fn over_ui(
     time: Res<Time>,
     hovers: Option<Res<HoverMap>>,
     nodes: Query<(), With<ComputedNode>>,
+    buttons: Query<&Hoverable, With<ComputedNode>>,
     mut grace: ResMut<Grace>,
     mut over: ResMut<PointerOverUi>,
+    hints: Option<ResMut<CursorHints>>,
 ) {
     let touching = hovers.is_some_and(|hovers| {
         hovers
             .get(&PointerId::Mouse)
             .is_some_and(|hits| hits.keys().any(|entity| nodes.get(*entity).is_ok()))
     });
+    let on_button = buttons.iter().any(Hoverable::get);
+
+    if let Some(mut hints) = hints
+        && hints.over_button != on_button
+    {
+        hints.over_button = on_button;
+    }
 
     grace.0 = if touching {
         GRACE
