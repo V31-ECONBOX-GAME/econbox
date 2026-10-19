@@ -103,6 +103,7 @@ pub struct ScreenOptions {
     pub bloom: bool,
     pub vignette: bool,
     pub transition: bool,
+    pub shadows: bool,
 }
 
 impl Default for ScreenOptions {
@@ -111,6 +112,7 @@ impl Default for ScreenOptions {
             bloom: true,
             vignette: true,
             transition: true,
+            shadows: true,
         }
     }
 }

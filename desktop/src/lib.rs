@@ -113,6 +113,7 @@ fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<Scr
         bloom: options.on("bloom"),
         vignette: options.on("vignette"),
         transition: options.on("minimap_transition_animation"),
+        shadows: options.on("shadows"),
     };
     screen.set_if_neq(wanted);
 }

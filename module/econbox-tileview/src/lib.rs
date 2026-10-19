@@ -3,8 +3,12 @@
 pub mod art;
 pub mod compose;
 pub mod look;
+pub mod objects;
+pub mod objects_view;
 pub mod quality;
 pub mod sleek;
+pub mod thing_art;
+pub mod things;
 pub mod view;
 
 use bevy::asset::embedded_asset;
@@ -44,28 +48,38 @@ pub struct TileViewPlugin;
 impl Plugin for TileViewPlugin {
     fn build(&self, app: &mut App) {
         embedded_asset!(app, "chunk.wgsl");
+        embedded_asset!(app, "objects.wgsl");
 
-        app.add_plugins((Material2dPlugin::<ChunkMaterial>::default(), SleekPlugin))
-            .init_resource::<WorldSeed>()
-            .init_resource::<WorldSettings>()
-            .init_resource::<MapMode>()
-            .init_resource::<Runup>()
-            .init_resource::<Drawn>()
-            .add_message::<Regenerate>()
-            .add_message::<Painted>()
-            .add_systems(Startup, (spawn, view::spawn_layers))
-            .add_systems(
-                Update,
-                (
-                    rebuild,
-                    view::refresh,
-                    view::repaint,
-                    view::switch,
-                    view::pulse,
-                    view::draw,
-                )
-                    .chain(),
-            );
+        app.add_plugins((
+            Material2dPlugin::<ChunkMaterial>::default(),
+            Material2dPlugin::<objects_view::ObjectMaterial>::default(),
+            SleekPlugin,
+        ))
+        .init_resource::<objects_view::ObjectClock>()
+        .init_resource::<objects_view::ObjectsDrawn>()
+        .init_resource::<WorldSeed>()
+        .init_resource::<WorldSettings>()
+        .init_resource::<MapMode>()
+        .init_resource::<Runup>()
+        .init_resource::<Drawn>()
+        .add_message::<Regenerate>()
+        .add_message::<Painted>()
+        .add_systems(Startup, (spawn, view::spawn_layers))
+        .add_systems(
+            Update,
+            (
+                rebuild,
+                view::refresh,
+                view::repaint,
+                view::switch,
+                view::pulse,
+                view::draw,
+                objects_view::mark,
+                objects_view::tick,
+                objects_view::draw,
+            )
+                .chain(),
+        );
     }
 }
 

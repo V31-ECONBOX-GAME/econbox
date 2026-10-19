@@ -1,9 +1,10 @@
 use crate::art::{self, Pixmap};
 use crate::look::{self, Layer, Look};
-use econbox_tile::{Flora, Ore, Tile};
+use crate::{objects, thing_art, things};
 use econbox_tilemap::TileMap;
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 pub const PX: u32 = 4;
 
@@ -77,7 +78,10 @@ pub fn shade(rgb: [u8; 3]) -> [u8; 3] {
 }
 
 pub fn minimap(map: &TileMap, x: u32, y: u32) -> [u8; 4] {
-    let base = map.at(x, y).color();
+    let base = match objects::icon_pixel(map, x, y) {
+        Some([r, g, b, _]) => [r, g, b],
+        None => objects::base_color(map.at(x, y)),
+    };
     let [r, g, b] = match edge(map, x, y) {
         None => base,
         Some(Edge::Solid(rgb)) => rgb,
@@ -182,34 +186,21 @@ pub struct Canvas {
     pub area: Area,
     pub color: Vec<[u8; 4]>,
     pub rim: Vec<u8>,
+    pub shade: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Ink {
     Tile,
     Rim,
-    Object,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Thing {
-    Wall(&'static str),
-    Flora(Flora, [u8; 3], u8),
-    Ore(Ore, u8),
-}
-
-enum Art {
-    Sheet(&'static Pixmap),
-    Thing(Thing),
 }
 
 struct Stamp {
-    pass: u8,
     z: u8,
     tx: u32,
     ty: u32,
     ink: Ink,
-    art: Art,
+    art: &'static Pixmap,
 }
 
 impl Canvas {
@@ -219,6 +210,27 @@ impl Canvas {
             area,
             color: vec![art::CLEAR; size],
             rim: vec![0; size],
+            shade: vec![0; size],
+        }
+    }
+
+    pub fn shade_at(&self, x: u32, y: u32) -> u8 {
+        self.shade[self.index(x, y)]
+    }
+
+    fn darken(&mut self, mask: &Pixmap, left: i32, top: i32) {
+        for sy in 0..mask.height {
+            for sx in 0..mask.width {
+                if mask.at(sx, sy)[3] == 0 {
+                    continue;
+                }
+                let x = left + i32::from(sx);
+                let y = top + i32::from(sy);
+                if self.area.contains(x, y) {
+                    let at = self.index(x as u32, y as u32);
+                    self.shade[at] = 255;
+                }
+            }
         }
     }
 
@@ -258,12 +270,6 @@ impl Canvas {
                         self.rim[at] = 0;
                     }
                     Ink::Rim => self.rim[at] = self.rim[at].saturating_add(1),
-                    Ink::Object => {
-                        self.color[at] = over(pixel, self.color[at]);
-                        if pixel[3] == 255 {
-                            self.rim[at] = 0;
-                        }
-                    }
                 }
             }
         }
@@ -292,36 +298,6 @@ pub fn over(top: [u8; 4], under: [u8; 4]) -> [u8; 4] {
     ]
 }
 
-fn things(tile: Tile, tx: u32, ty: u32) -> Vec<Thing> {
-    let mut found = Vec::new();
-
-    if let Some(wall) = tile.wall {
-        found.push(Thing::Wall(look::wall(wall).id));
-    }
-    if let Some(ore) = tile.ore {
-        found.push(Thing::Ore(ore, pick(tx, ty, 3)));
-    }
-    if let Some(flora) = tile.flora {
-        found.push(Thing::Flora(flora, tile.cover(), pick(ty, tx, 3)));
-    }
-
-    found
-}
-
-fn render_thing(thing: Thing) -> Pixmap {
-    match thing {
-        Thing::Wall(id) => art::wall_block(
-            econbox_tile::WALLS
-                .into_iter()
-                .map(look::wall)
-                .find(|look| look.id == id)
-                .unwrap_or(&look::WALL_ORDER),
-        ),
-        Thing::Flora(flora, cover, variant) => art::flora(flora, cover, variant),
-        Thing::Ore(ore, variant) => art::deposit(ore, variant),
-    }
-}
-
 fn stamps(map: &TileMap, tx: u32, ty: u32, out: &mut Vec<Stamp>) {
     let tile = map.at(tx, ty);
     let here = look::of(tile);
@@ -330,54 +306,109 @@ fn stamps(map: &TileMap, tx: u32, ty: u32, out: &mut Vec<Stamp>) {
         && let Some(sprite) = art::sprites(here).get(usize::from(variant(map, tx, ty)))
     {
         out.push(Stamp {
-            pass: 0,
             z: here.z,
             tx,
             ty,
             ink: Ink::Tile,
-            art: Art::Sheet(sprite),
+            art: sprite,
         });
     }
 
     match border(map, tx, ty) {
         Some(Border::Pit) => out.push(Stamp {
-            pass: 0,
             z: look::BORDER_PIT.z,
             tx,
             ty,
             ink: Ink::Tile,
-            art: Art::Sheet(&art::sprites(&look::BORDER_PIT)[0]),
+            art: &art::sprites(&look::BORDER_PIT)[0],
         }),
         Some(Border::Water) => {
             out.push(Stamp {
-                pass: 0,
                 z: look::BORDER_WATER.z,
                 tx,
                 ty,
                 ink: Ink::Tile,
-                art: Art::Sheet(&art::sprites(&look::BORDER_WATER)[0]),
+                art: &art::sprites(&look::BORDER_WATER)[0],
             });
             out.push(Stamp {
-                pass: 0,
                 z: look::BORDER_WATER_RUNUP.z,
                 tx,
                 ty,
                 ink: Ink::Rim,
-                art: Art::Sheet(&art::sprites(&look::BORDER_WATER_RUNUP)[0]),
+                art: &art::sprites(&look::BORDER_WATER_RUNUP)[0],
             });
         }
         None => {}
     }
+}
 
-    for thing in things(tile, tx, ty) {
-        out.push(Stamp {
-            pass: 1,
-            z: 0,
-            tx,
-            ty,
-            ink: Ink::Object,
-            art: Art::Thing(thing),
-        });
+pub fn shadows() -> &'static HashMap<(&'static str, usize), Pixmap> {
+    static SHADOWS: OnceLock<HashMap<(&'static str, usize), Pixmap>> = OnceLock::new();
+    SHADOWS.get_or_init(|| {
+        let mut all = HashMap::new();
+        for kind in things::KINDS {
+            for index in 0..kind.variants.len() {
+                let sprite = thing_art::frame(kind, index, 0, false);
+                if let Some(mask) = objects::shadow(kind, &sprite) {
+                    all.insert((kind.id, index), mask);
+                }
+            }
+        }
+        all
+    })
+}
+
+pub fn shadow_reach() -> (u32, u32) {
+    static REACH_CACHE: OnceLock<(u32, u32)> = OnceLock::new();
+    *REACH_CACHE.get_or_init(|| {
+        let mut wide = 0.0_f32;
+        let mut tall = 0.0_f32;
+        for kind in things::KINDS {
+            for (index, variant) in kind.variants.iter().enumerate() {
+                if let Some(mask) = shadows().get(&(kind.id, index)) {
+                    wide = wide
+                        .max(variant.pivot_x)
+                        .max(f32::from(mask.width) - variant.pivot_x);
+                    tall = tall
+                        .max(f32::from(mask.height) - variant.pivot_y)
+                        .max(variant.pivot_y);
+                }
+            }
+        }
+        (
+            (wide / PX as f32).ceil() as u32 + 1,
+            (tall / PX as f32).ceil() as u32 + 1,
+        )
+    })
+}
+
+fn cast_shadows(map: &TileMap, area: Area, canvas: &mut Canvas) {
+    let (wide, tall) = shadow_reach();
+    let tx0 = (area.x / PX).saturating_sub(wide);
+    let ty0 = (area.y / PX).saturating_sub(1);
+    let tx1 = ((area.x + area.width - 1) / PX + wide).min(map.width - 1);
+    let ty1 = ((area.y + area.height - 1) / PX + tall).min(map.height - 1);
+
+    for ty in ty0..=ty1 {
+        for tx in tx0..=tx1 {
+            let tile = map.at(tx, ty);
+            if tile.flora.is_none() && tile.ore.is_none() {
+                continue;
+            }
+            for placed in objects::objects(tile, tx, ty) {
+                let objects::Sprite::Kind { kind, variant, .. } = placed.sprite else {
+                    continue;
+                };
+                let Some(mask) = shadows().get(&(kind.id, variant)) else {
+                    continue;
+                };
+                let pivot = placed.variant();
+                let left = (tx * PX + PX / 2) as i32 + (-pivot.pivot_x).round() as i32;
+                let top = (ty * PX + PX / 2) as i32
+                    - (f32::from(mask.height) - pivot.pivot_y).round() as i32;
+                canvas.darken(mask, left, top);
+            }
+        }
     }
 }
 
@@ -402,21 +433,13 @@ pub fn compose(map: &TileMap, area: Area) -> Canvas {
         }
     }
 
-    list.sort_by_key(|stamp| (stamp.pass, stamp.z, stamp.ty, Reverse(stamp.tx)));
+    list.sort_by_key(|stamp| (stamp.z, stamp.ty, Reverse(stamp.tx)));
 
-    let mut made: HashMap<Thing, Pixmap> = HashMap::new();
     for stamp in &list {
-        match stamp.art {
-            Art::Sheet(sprite) => canvas.stamp(sprite, stamp.tx, stamp.ty, stamp.ink),
-            Art::Thing(thing) => {
-                let sprite = made
-                    .entry(thing)
-                    .or_insert_with(|| render_thing(thing))
-                    .clone();
-                canvas.stamp(&sprite, stamp.tx, stamp.ty, stamp.ink);
-            }
-        }
+        canvas.stamp(stamp.art, stamp.tx, stamp.ty, stamp.ink);
     }
+
+    cast_shadows(map, area, &mut canvas);
 
     canvas
 }
@@ -424,7 +447,7 @@ pub fn compose(map: &TileMap, area: Area) -> Canvas {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use econbox_tile::{Ground, Overlay, Wall};
+    use econbox_tile::{Flora, Ground, Overlay, Tile, Wall};
 
     fn strip(column: &[Tile]) -> TileMap {
         let mut map = TileMap::filled(1, column.len() as u32, column[0]);
@@ -672,14 +695,22 @@ mod tests {
     }
 
     #[test]
-    fn objects_sit_on_top_and_hide_the_rim() {
-        let mut map = sea_with_island();
-        map.set(3, 3, bare(Ground::Sand).with_wall(Some(Wall::Light)));
-        let canvas = compose(&map, Area::tiles(&map, 0, 0, 8, 8));
-        let block = art::wall_block(&look::WALL_LIGHT);
+    fn a_tree_casts_its_shadow_to_the_right_and_marks_it_once() {
+        let mut map = TileMap::filled(16, 16, Tile::new(Ground::SoilLow, Overlay::Grass));
+        map.set(8, 8, map.at(8, 8).with_flora(Some(Flora::Tree)));
+        let canvas = compose(&map, Area::tiles(&map, 0, 0, 16, 16));
+        let shaded: Vec<(u32, u32)> = (0..64)
+            .flat_map(|y| (0..64).map(move |x| (x, y)))
+            .filter(|&(x, y)| canvas.shade_at(x, y) > 0)
+            .collect();
 
-        assert_eq!(canvas.at(13, 15), block.at(3, 7));
-        assert_eq!(canvas.at(13, 9), block.at(3, 1));
+        assert!(!shaded.is_empty());
+        assert!(shaded.iter().all(|&(x, _)| x >= 32));
+        assert!(
+            shaded.iter().all(|&(_, y)| (28..40).contains(&y)),
+            "{shaded:?}"
+        );
+        assert!(canvas.shade.iter().all(|&s| s == 0 || s == 255));
     }
 
     #[test]

@@ -6,6 +6,9 @@ pub const LOW_RES_FLOOR: f32 = 0.9;
 pub const SWITCH_FLASH: f32 = 0.1;
 pub const SWITCH_FADE: f32 = 0.1;
 pub const SWITCH_GREY: f32 = 0.741_176_5;
+pub const SHADOW_ZOOM: f32 = 0.85;
+pub const BUILDING_HIDE: f32 = 0.3;
+pub const SHADOW_ALPHA: f32 = 103.0 / 255.0;
 
 pub fn camera_multiplier(value: f32, pixel_width: f32, pixel_height: f32) -> f32 {
     let aspect = pixel_width / pixel_height.max(1.0);
@@ -37,6 +40,7 @@ pub struct MapMode {
     pub zoom: f32,
     pub flash: f32,
     pub switched: bool,
+    pub shadow_bound: f32,
 }
 
 impl Default for MapMode {
@@ -47,6 +51,7 @@ impl Default for MapMode {
             zoom: MAIN_ZOOM,
             flash: 0.0,
             switched: false,
+            shadow_bound: MAIN_ZOOM * SHADOW_ZOOM,
         }
     }
 }
@@ -54,6 +59,7 @@ impl Default for MapMode {
 impl MapMode {
     pub fn set_zoom(&mut self, orthographic: f32, pixel_width: f32, pixel_height: f32) {
         self.zoom = orthographic;
+        self.shadow_bound = camera_multiplier(MAIN_ZOOM * SHADOW_ZOOM, pixel_width, pixel_height);
         let low = orthographic > bound_low(pixel_width, pixel_height);
 
         self.switched = low != self.low_res;
@@ -101,6 +107,26 @@ impl MapMode {
 
     pub fn tween_buildings(&self) -> f32 {
         1.0 - ease_in_circ(self.factor)
+    }
+
+    pub fn full_low_res(&self) -> bool {
+        self.low_res && self.factor >= 1.0
+    }
+
+    pub fn render_buildings(&self) -> bool {
+        let tween = self.tween_buildings();
+        if self.low_res && tween < BUILDING_HIDE {
+            return false;
+        }
+        !self.full_low_res() && tween != 0.0
+    }
+
+    pub fn shadows_on(&self) -> bool {
+        self.zoom <= self.shadow_bound && self.render_buildings()
+    }
+
+    pub fn shadow_alpha(&self) -> f32 {
+        SHADOW_ALPHA * (4.0 - self.tween_buildings() * 3.0)
     }
 }
 

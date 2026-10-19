@@ -17,6 +17,31 @@ enum Step {
 }
 
 #[derive(Resource)]
+struct Offscreen(Handle<Image>);
+
+fn offscreen(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    cameras: Query<Entity, Added<WorldCamera>>,
+) {
+    if std::env::var("ECONBOX_OFFSCREEN").is_err() {
+        return;
+    }
+    for camera in &cameras {
+        let image = images.add(Image::new_target_texture(
+            2560,
+            1440,
+            bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+            None,
+        ));
+        commands
+            .entity(camera)
+            .insert(bevy::camera::RenderTarget::Image(image.clone().into()));
+        commands.insert_resource(Offscreen(image));
+    }
+}
+
+#[derive(Resource)]
 struct Tour {
     steps: Vec<Step>,
     at: usize,
@@ -125,6 +150,7 @@ fn drive(
     mut exit: MessageWriter<AppExit>,
     mut map: Option<ResMut<TileMap>>,
     mode: Res<MapMode>,
+    target: Option<Res<Offscreen>>,
 ) {
     if tour.spot.is_none()
         && let Some(map) = map.as_deref()
@@ -171,9 +197,11 @@ fn drive(
                 mode.low_res,
                 mode.factor
             );
-            commands
-                .spawn(Screenshot::primary_window())
-                .observe(save_to_disk(path));
+            let shot = match target.as_deref() {
+                Some(Offscreen(image)) => Screenshot::image(image.clone()),
+                None => Screenshot::primary_window(),
+            };
+            commands.spawn(shot).observe(save_to_disk(path));
         }
     }
 
@@ -194,6 +222,6 @@ fn main() {
         out,
         spot: None,
     })
-    .add_systems(Update, drive);
+    .add_systems(Update, (offscreen, drive));
     app.run();
 }

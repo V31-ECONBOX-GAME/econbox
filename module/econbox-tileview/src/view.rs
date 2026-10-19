@@ -30,6 +30,8 @@ pub struct ChunkMaterial {
     #[texture(4)]
     #[sampler(5)]
     pub runup: Handle<Image>,
+    #[uniform(6)]
+    pub shadow: Vec4,
 }
 
 impl Material2d for ChunkMaterial {
@@ -68,6 +70,7 @@ pub struct Drawn {
     pub quad: Option<Handle<Mesh>>,
     pub chunks: HashMap<(u32, u32), ChunkView>,
     pub dirty: HashSet<(u32, u32)>,
+    pub epoch: u64,
 }
 
 pub fn nearest(image: &mut Image) {
@@ -147,7 +150,10 @@ pub fn write(target: &mut Image, origin: Area, canvas: &Canvas, channels: usize)
                 data[to + i * 4..to + i * 4 + 4].copy_from_slice(pixel);
             }
         } else {
-            data[to..to + row].copy_from_slice(&canvas.rim[from..from + row]);
+            for i in 0..row {
+                data[to + i * 2] = canvas.rim[from + i];
+                data[to + i * 2 + 1] = canvas.shade[from + i];
+            }
         }
     }
 }
@@ -156,14 +162,25 @@ pub fn chunk_images(canvas: &Canvas) -> (Image, Image) {
     let Area { width, height, .. } = canvas.area;
     (
         image(width, height, TextureFormat::Rgba8Unorm, canvas.rgba()),
-        image(width, height, TextureFormat::R8Unorm, canvas.rim.clone()),
+        image(
+            width,
+            height,
+            TextureFormat::Rg8Unorm,
+            canvas
+                .rim
+                .iter()
+                .zip(&canvas.shade)
+                .flat_map(|(&rim, &shade)| [rim, shade])
+                .collect(),
+        ),
     )
 }
 
 pub fn dirty_blocks(map: &TileMap, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
-    let x0 = x.saturating_sub(2) / BLOCK;
-    let y0 = y.saturating_sub(3) / BLOCK;
-    let x1 = (x + 2).min(map.width - 1) / BLOCK;
+    let (wide, tall) = compose::shadow_reach();
+    let x0 = x.saturating_sub(2.max(wide)) / BLOCK;
+    let y0 = y.saturating_sub(3.max(tall)) / BLOCK;
+    let x1 = (x + 2.max(wide)).min(map.width - 1) / BLOCK;
     let y1 = (y + 2).min(map.height - 1) / BLOCK;
     (y0..=y1).flat_map(move |by| (x0..=x1).map(move |bx| (bx, by)))
 }
@@ -229,6 +246,7 @@ pub fn refresh(
         images.remove(&chunk.runup);
     }
     drawn.dirty.clear();
+    drawn.epoch += 1;
     drawn.width = map.width;
     drawn.height = map.height;
 
@@ -375,6 +393,7 @@ pub fn draw(
     mut materials: ResMut<Assets<ChunkMaterial>>,
     camera: Option<Single<(&Transform, &Projection), With<WorldCamera>>>,
     mode: Res<MapMode>,
+    options: Res<crate::sleek::ScreenOptions>,
     runup: Res<Runup>,
     clear: Option<Res<ClearColor>>,
     map: Option<Res<TileMap>>,
@@ -398,6 +417,16 @@ pub fn draw(
     );
     let ocean = clear.map(|clear| ocean_color(&clear)).unwrap_or(Vec4::ONE);
     let rim = rim_color(&runup);
+    let shadow = Vec4::new(
+        if options.shadows && mode.shadows_on() {
+            mode.shadow_alpha()
+        } else {
+            0.0
+        },
+        0.0,
+        0.0,
+        0.0,
+    );
 
     let wanted: Vec<(u32, u32)> = (y0 / CHUNK..=y1 / CHUNK)
         .flat_map(|cy| (x0 / CHUNK..=x1 / CHUNK).map(move |cx| (cx, cy)))
@@ -434,6 +463,7 @@ pub fn draw(
                 ocean,
                 tiles: tiles.clone(),
                 runup: runup_counts.clone(),
+                shadow,
             });
             let (width, height) = chunk_tiles(&map, cx, cy);
             let centre = tile_centre(
@@ -497,7 +527,7 @@ pub fn draw(
                 write(&mut image, origin, &canvas, 4);
             }
             if let Some(mut image) = images.get_mut(&chunk.runup) {
-                write(&mut image, origin, &canvas, 1);
+                write(&mut image, origin, &canvas, 2);
             }
         }
     }
@@ -505,11 +535,12 @@ pub fn draw(
     for key in wanted {
         if let Some(chunk) = drawn.chunks.get(&key)
             && let Some(material) = materials.get(&chunk.material)
-            && (material.rim != rim || material.ocean != ocean)
+            && (material.rim != rim || material.ocean != ocean || material.shadow != shadow)
             && let Some(mut material) = materials.get_mut(&chunk.material)
         {
             material.rim = rim;
             material.ocean = ocean;
+            material.shadow = shadow;
         }
     }
 }
@@ -592,7 +623,6 @@ mod tests {
             let drawn = app.world().resource::<Drawn>();
             assert!(drawn.dirty.contains(&(1, 1)));
             assert!(drawn.dirty.contains(&(1, 0)));
-            assert!(!drawn.dirty.contains(&(0, 0)));
         }
 
         app.world_mut().resource_mut::<Drawn>().dirty.clear();
@@ -658,7 +688,11 @@ mod tests {
 
         assert!(blocks.contains(&(0, 0)));
         assert!(blocks.contains(&(1, 1)));
-        assert_eq!(dirty_blocks(&map, 12, 12).collect::<Vec<_>>(), [(1, 1)]);
+        let (wide, _) = compose::shadow_reach();
+        let reach: Vec<_> = dirty_blocks(&map, 12, 12).collect();
+        assert!(reach.contains(&(1, 1)));
+        assert!(reach.contains(&(((12 + wide).min(63) / BLOCK), 1)));
+        assert!(!reach.contains(&(1, 2)));
     }
 
     #[test]

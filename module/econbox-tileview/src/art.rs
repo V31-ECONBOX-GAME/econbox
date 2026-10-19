@@ -1,5 +1,5 @@
 use crate::look::{self, Look, Paint, Style};
-use econbox_tile::{Flora, Ground, Ore, Overlay};
+use econbox_tile::{Ground, Overlay};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -597,153 +597,6 @@ pub fn sprites(look: &Look) -> &'static [Pixmap] {
     sheet.get(look.id).map(Vec::as_slice).unwrap_or(&[])
 }
 
-pub const BERRY: [u8; 3] = [0xd2, 0x38, 0x3e];
-const BARK: [u8; 3] = [0x6b, 0x48, 0x2c];
-const STONE: [u8; 3] = [0x8f, 0x92, 0x8c];
-
-pub fn wall_block(look: &Look) -> Pixmap {
-    let body = look.color();
-    let edge = look.edge.unwrap_or_else(|| scale(body, 0.7));
-    let cap = lighten(body, 0.35);
-    let side = scale(edge, 0.62);
-    let shadow = [0, 0, 0, 118];
-    let mut map = Pixmap::blank(8, 8, 2, 4);
-    map.spans(&[(0, 3, 4)], lighten(body, 0.18));
-    map.spans(&[(1, 2, 4), (2, 2, 4), (3, 2, 4), (4, 2, 4)], body);
-    map.spans(&[(1, 3, 4), (2, 3, 3)], cap);
-    map.spans(&[(5, 2, 4), (6, 2, 4), (7, 2, 4)], edge);
-    map.put(3, 6, body);
-    map.spans(
-        &[
-            (1, 5, 5),
-            (2, 5, 5),
-            (3, 5, 5),
-            (4, 5, 5),
-            (5, 5, 5),
-            (6, 5, 5),
-            (7, 5, 5),
-        ],
-        side,
-    );
-
-    for (x, y) in [(6, 4), (6, 5), (7, 5), (6, 6), (7, 6), (6, 7), (7, 7)] {
-        map.paint(x, y, shadow);
-    }
-
-    map
-}
-
-pub fn flora(kind: Flora, cover: [u8; 3], variant: u8) -> Pixmap {
-    let leaf = kind.tint(cover);
-    let light = lighten(scale(leaf, 1.18), 0.06);
-    let dark = scale(leaf, 0.78);
-    let mut dice = Dice::new(kind.name(), variant);
-
-    match kind {
-        Flora::Tree => {
-            let mut map = Pixmap::blank(8, 9, 2, 5);
-            let crown: [(u8, u8, u8); 6] = match variant {
-                0 => [
-                    (0, 3, 4),
-                    (1, 2, 5),
-                    (2, 1, 6),
-                    (3, 1, 6),
-                    (4, 1, 6),
-                    (5, 2, 5),
-                ],
-                1 => [
-                    (0, 2, 4),
-                    (1, 1, 5),
-                    (2, 1, 6),
-                    (3, 1, 6),
-                    (4, 2, 6),
-                    (5, 2, 5),
-                ],
-                _ => [
-                    (0, 3, 5),
-                    (1, 2, 6),
-                    (2, 1, 6),
-                    (3, 1, 6),
-                    (4, 1, 5),
-                    (5, 2, 5),
-                ],
-            };
-            map.spans(&crown, leaf);
-
-            for (x, y) in map.cells() {
-                if y <= 2 && x <= 3 && dice.chance(65) {
-                    map.put(x, y, light);
-                } else if (y >= 4 || x >= 5) && dice.chance(55) {
-                    map.put(x, y, dark);
-                }
-            }
-
-            map.spans(&[(6, 3, 3), (7, 3, 3), (8, 3, 3)], BARK);
-            map.spans(&[(6, 4, 4), (7, 4, 4), (8, 4, 4)], scale(BARK, 0.74));
-            map
-        }
-        Flora::Bush => {
-            let mut map = Pixmap::blank(8, 6, 2, 2);
-            map.spans(
-                &[
-                    (0, 3, 4),
-                    (1, 2, 5),
-                    (2, 1, 6),
-                    (3, 1, 6),
-                    (4, 1, 6),
-                    (5, 2, 5),
-                ],
-                leaf,
-            );
-
-            for (x, y) in map.cells() {
-                if y <= 1 && x <= 3 {
-                    map.put(x, y, light);
-                } else if y >= 4 {
-                    map.put(x, y, dark);
-                }
-            }
-
-            sprinkle(&mut map, &mut dice, BERRY, 3, (1, 4));
-            map
-        }
-        Flora::Sapling => {
-            let mut map = Pixmap::blank(6, 5, 1, 1);
-            map.spans(&[(0, 2, 3), (1, 1, 2), (1, 3, 4)], light);
-            map.spans(&[(2, 2, 3)], leaf);
-            map.spans(&[(3, 2, 2), (4, 2, 2)], scale(BARK, 1.1));
-            map
-        }
-    }
-}
-
-pub fn deposit(ore: Ore, variant: u8) -> Pixmap {
-    let mut dice = Dice::new(ore.name(), variant);
-    let mut map = Pixmap::blank(8, 6, 2, 2);
-    let rows: [(u8, u8, u8); 5] = match variant {
-        0 => [(1, 3, 4), (2, 2, 5), (3, 1, 6), (4, 1, 6), (5, 2, 5)],
-        1 => [(1, 2, 3), (2, 1, 5), (3, 1, 6), (4, 1, 6), (5, 2, 6)],
-        _ => [(1, 4, 5), (2, 2, 6), (3, 1, 6), (4, 1, 6), (5, 1, 5)],
-    };
-    map.spans(&rows, STONE);
-
-    for (x, y) in map.cells() {
-        if y <= 2 && x <= 3 {
-            map.put(x, y, lighten(STONE, 0.2));
-        } else if y == 5 || x >= 6 {
-            map.put(x, y, scale(STONE, 0.7));
-        }
-    }
-
-    if ore != Ore::Stone {
-        let vein = ore.color();
-        sprinkle(&mut map, &mut dice, vein, 4, (2, 4));
-        sprinkle(&mut map, &mut dice, lighten(vein, 0.35), 1, (2, 3));
-    }
-
-    map
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -874,19 +727,5 @@ mod tests {
     fn the_art_never_changes_between_calls() {
         assert_eq!(draw(&look::SUMMIT, 4), draw(&look::SUMMIT, 4));
         assert_ne!(draw(&look::SAND, 0), draw(&look::SAND, 1));
-    }
-
-    #[test]
-    fn objects_stand_on_the_bottom_of_their_cell() {
-        for sprite in [
-            flora(Flora::Tree, Overlay::Grass.color(false).unwrap(), 0),
-            flora(Flora::Bush, Overlay::Grass.color(false).unwrap(), 0),
-            flora(Flora::Sapling, Overlay::Grass.color(false).unwrap(), 0),
-            deposit(Ore::Gold, 1),
-        ] {
-            assert_eq!(i32::from(sprite.height) - i32::from(sprite.top), 4);
-        }
-
-        assert_eq!(wall_block(&look::WALL_IRON).top, 4);
     }
 }
