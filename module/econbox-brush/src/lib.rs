@@ -551,6 +551,7 @@ pub enum Tool {
     Mine,
     Wall(Wall),
     Drop(Bomb),
+    Special,
 }
 
 const TREE_SHARE: u32 = 45;
@@ -559,7 +560,10 @@ const ORE_SHARE: u32 = 35;
 
 impl Tool {
     pub fn edits(self) -> bool {
-        !matches!(self, Self::Inspect | Self::Spawn(_) | Self::Drop(_))
+        !matches!(
+            self,
+            Self::Inspect | Self::Spawn(_) | Self::Drop(_) | Self::Special
+        )
     }
 
     pub fn holds(self) -> bool {
@@ -582,6 +586,7 @@ impl Tool {
             Self::Mine => "mine".to_string(),
             Self::Wall(wall) => wall.name().to_string(),
             Self::Drop(bomb) => bomb.name().to_string(),
+            Self::Special => "special".to_string(),
         }
     }
 
@@ -628,13 +633,15 @@ impl Tool {
             Self::Mine => (Icon::Peaks, None),
             Self::Wall(_) => (Icon::Block, self.swatch()),
             Self::Drop(_) => (Icon::Bomb, None),
-            Self::Spawn(_) => return None,
+            Self::Spawn(_) | Self::Special => return None,
         })
     }
 
     pub fn applied(self, tile: Tile) -> Option<Tile> {
         let next = match self {
-            Self::Inspect | Self::Spawn(_) | Self::Power(_) | Self::Drop(_) => return None,
+            Self::Inspect | Self::Spawn(_) | Self::Power(_) | Self::Drop(_) | Self::Special => {
+                return None;
+            }
             Self::Ground(ground) => tile.with_ground(ground),
             Self::Overlay(overlay) => tile.with_overlay(overlay),
             Self::Raise => tile.with_ground(step(tile.ground, 1)),
@@ -1388,6 +1395,17 @@ mod tests {
         assert_eq!(Tool::Inspect.icon().map(|found| found.0), Some(Icon::Lens));
         assert_eq!(Tool::Strip.icon().map(|found| found.0), Some(Icon::Eraser));
         assert!(Tool::Spawn(Species::Cat).icon().is_none());
+        assert!(Tool::Special.icon().is_none());
+    }
+
+    #[test]
+    fn a_special_power_takes_the_left_button_and_leaves_the_map_to_its_own_plugin() {
+        let tool = Tool::Special;
+
+        assert!(tool.holds());
+        assert!(!tool.edits());
+        assert_eq!(tool.applied(Tile::bare(Ground::Sand)), None);
+        assert_eq!(tool.name(), "special");
     }
 
     #[test]
