@@ -5,6 +5,7 @@ pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
 use config::{logs, settings, windows};
+use econbox_age::AgePlugin;
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
@@ -51,6 +52,7 @@ pub fn app_with(source: &Config) -> App {
         .add_plugins((
             CameraPlugin,
             ClockPlugin,
+            AgePlugin,
             TileViewPlugin,
             CursorPlugin,
             CreaturePlugin,

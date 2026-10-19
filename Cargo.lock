@@ -2434,6 +2434,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "econbox",
+ "econbox-age",
  "econbox-art",
  "econbox-brush",
  "econbox-camera",
@@ -2528,6 +2529,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "econbox-age"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "econbox-clock",
+]
+
+[[package]]
 name = "econbox-art"
 version = "0.2.0"
 
@@ -2564,6 +2573,7 @@ name = "econbox-clouds"
 version = "0.2.0"
 dependencies = [
  "bevy",
+ "econbox-age",
  "econbox-brush",
  "econbox-camera",
  "econbox-clock",

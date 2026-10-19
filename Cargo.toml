@@ -14,6 +14,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 config_rs = { package = "config", version = "0.15", default-features = false, features = ["toml"] }
 econbox = { path = "core/econbox" }
+econbox-age = { path = "module/econbox-age" }
 econbox-art = { path = "module/econbox-art" }
 econbox-brush = { path = "module/econbox-brush" }
 econbox-camera = { path = "module/econbox-camera" }

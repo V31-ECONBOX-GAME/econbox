@@ -12,6 +12,7 @@ path = "src/main.rs"
 bevy = { workspace = true, features = ["2d", "ui", "audio"] }
 serde = { workspace = true }
 econbox = { workspace = true }
+econbox-age = { workspace = true }
 econbox-art = { workspace = true }
 econbox-brush = { workspace = true }
 econbox-camera = { workspace = true }

@@ -1,4 +1,6 @@
-use crate::kind::CloudKind;
+//! WorldBox's world ages: which one rules, how long it lasts, and what it brings to the map.
+
+use bevy::prelude::*;
 
 pub const CLOUD_INTERVAL: f32 = 15.0;
 
@@ -49,19 +51,19 @@ impl Age {
         }
     }
 
-    pub fn clouds(self) -> &'static [(CloudKind, u32)] {
+    pub fn clouds(self) -> &'static [(&'static str, u32)] {
         match self {
-            Self::Hope | Self::Sun | Self::Dark => &[(CloudKind::Normal, 1)],
+            Self::Hope | Self::Sun | Self::Dark => &[("cloud_normal", 1)],
             Self::Tears => &[
-                (CloudKind::Rain, 5),
-                (CloudKind::Lightning, 1),
-                (CloudKind::Normal, 2),
+                ("cloud_rain", 5),
+                ("cloud_lightning", 1),
+                ("cloud_normal", 2),
             ],
-            Self::Moon => &[(CloudKind::Rain, 5), (CloudKind::Normal, 5)],
-            Self::Chaos => &[(CloudKind::Rage, 1)],
-            Self::Wonders => &[(CloudKind::Magic, 5), (CloudKind::Normal, 1)],
-            Self::Ice | Self::Despair => &[(CloudKind::Snow, 1)],
-            Self::Ash => &[(CloudKind::Ash, 1)],
+            Self::Moon => &[("cloud_rain", 5), ("cloud_normal", 5)],
+            Self::Chaos => &[("cloud_rage", 1)],
+            Self::Wonders => &[("cloud_magic", 5), ("cloud_normal", 1)],
+            Self::Ice | Self::Despair => &[("cloud_snow", 1)],
+            Self::Ash => &[("cloud_ash", 1)],
             Self::Unknown => &[],
         }
     }
@@ -75,7 +77,7 @@ impl Age {
         }
     }
 
-    pub fn pick(self, roll: u32) -> Option<CloudKind> {
+    pub fn pick_cloud(self, roll: u32) -> Option<&'static str> {
         let pool = self.clouds();
         let total: u32 = pool.iter().map(|(_, weight)| weight).sum();
 
@@ -95,6 +97,17 @@ impl Age {
     }
 }
 
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct WorldAge(pub Age);
+
+pub struct AgePlugin;
+
+impl Plugin for AgePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<WorldAge>();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,7 +118,7 @@ mod tests {
 
         assert_eq!(age.id(), "age_hope");
         assert_eq!(age.cloud_interval(), 25.0);
-        assert_eq!(age.clouds(), &[(CloudKind::Normal, 1)]);
+        assert_eq!(age.clouds(), &[("cloud_normal", 1)]);
     }
 
     #[test]
@@ -113,10 +126,10 @@ mod tests {
         let mut counts = [0; 3];
 
         for roll in 0..8000 {
-            match Age::Tears.pick(roll) {
-                Some(CloudKind::Rain) => counts[0] += 1,
-                Some(CloudKind::Lightning) => counts[1] += 1,
-                Some(CloudKind::Normal) => counts[2] += 1,
+            match Age::Tears.pick_cloud(roll) {
+                Some("cloud_rain") => counts[0] += 1,
+                Some("cloud_lightning") => counts[1] += 1,
+                Some("cloud_normal") => counts[2] += 1,
                 other => panic!("{other:?}"),
             }
         }
@@ -126,7 +139,7 @@ mod tests {
 
     #[test]
     fn the_unknown_age_brings_no_clouds() {
-        assert_eq!(Age::Unknown.pick(7), None);
+        assert_eq!(Age::Unknown.pick_cloud(7), None);
     }
 
     #[test]
