@@ -1,4 +1,4 @@
-use crate::compose::{self, Area, Canvas};
+use crate::compose::{self, Area, Canvas, PX};
 use crate::look;
 use crate::quality::{MapMode, Runup, SWITCH_GREY};
 use bevy::asset::{AssetPath, RenderAssetUsages, embedded_path};
@@ -32,6 +32,8 @@ pub struct ChunkMaterial {
     pub runup: Handle<Image>,
     #[uniform(6)]
     pub shadow: Vec4,
+    #[uniform(7)]
+    pub tint: Vec4,
 }
 
 impl Material2d for ChunkMaterial {
@@ -125,11 +127,11 @@ pub fn chunk_tiles(map: &TileMap, x: u32, y: u32) -> (u32, u32) {
 
 pub fn chunk_area(map: &TileMap, x: u32, y: u32) -> Area {
     let (width, height) = chunk_tiles(map, x, y);
-    Area::tiles(map, x * CHUNK, y * CHUNK, width, height)
+    Area::tiles(map, x * CHUNK, y * CHUNK, width, height).with_margin(map)
 }
 
 pub fn block_area(map: &TileMap, x: u32, y: u32) -> Area {
-    Area::tiles(map, x * BLOCK, y * BLOCK, BLOCK, BLOCK)
+    Area::tiles(map, x * BLOCK, y * BLOCK, BLOCK, BLOCK).with_margin(map)
 }
 
 pub fn write(target: &mut Image, origin: Area, canvas: &Canvas, channels: usize) {
@@ -321,6 +323,7 @@ pub fn switch(
     camera: Option<Single<&Projection, With<WorldCamera>>>,
     time: Res<Time>,
     options: Res<crate::sleek::ScreenOptions>,
+    night: Res<crate::quality::Night>,
     mut mode: ResMut<MapMode>,
     mut layers: Query<(&mut Sprite, &mut Visibility), (With<MapLayer>, Without<SwitchFlash>)>,
     mut flashes: Query<(&mut Sprite, &mut Visibility), (With<SwitchFlash>, Without<MapLayer>)>,
@@ -340,8 +343,9 @@ pub fn switch(
         mode.snap();
     }
 
+    let [tr, tg, tb] = night.tint();
     for (mut sprite, mut visibility) in &mut layers {
-        sprite.color = Color::srgba(1.0, 1.0, 1.0, mode.map_alpha());
+        sprite.color = Color::srgba(tr, tg, tb, mode.map_alpha());
         visibility.set_if_neq(if mode.map_on() {
             Visibility::Inherited
         } else {
@@ -394,6 +398,7 @@ pub fn draw(
     camera: Option<Single<(&Transform, &Projection), With<WorldCamera>>>,
     mode: Res<MapMode>,
     options: Res<crate::sleek::ScreenOptions>,
+    night: Res<crate::quality::Night>,
     runup: Res<Runup>,
     clear: Option<Res<ClearColor>>,
     map: Option<Res<TileMap>>,
@@ -416,6 +421,8 @@ pub fn draw(
         projection.area.size(),
     );
     let ocean = clear.map(|clear| ocean_color(&clear)).unwrap_or(Vec4::ONE);
+    let [tr, tg, tb] = night.tint();
+    let tint = Vec4::new(tr, tg, tb, 1.0);
     let rim = rim_color(&runup);
     let shadow = Vec4::new(
         if options.shadows && mode.shadows_on() {
@@ -464,12 +471,14 @@ pub fn draw(
                 tiles: tiles.clone(),
                 runup: runup_counts.clone(),
                 shadow,
+                tint,
             });
-            let (width, height) = chunk_tiles(&map, cx, cy);
+            let area = canvas.area;
+            let unit = TILE_SIZE / PX as f32;
             let centre = tile_centre(
                 &map,
-                (cx * CHUNK) as f32 + width as f32 * 0.5,
-                (cy * CHUNK) as f32 + height as f32 * 0.5,
+                (area.x as f32 + area.width as f32 * 0.5) / PX as f32,
+                (area.y as f32 + area.height as f32 * 0.5) / PX as f32,
             );
             let entity = commands
                 .spawn((
@@ -477,8 +486,8 @@ pub fn draw(
                     Mesh2d(quad.clone()),
                     MeshMaterial2d(material.clone()),
                     Transform::from_xyz(centre.x, centre.y, TILES_LAYER).with_scale(Vec3::new(
-                        width as f32 * TILE_SIZE,
-                        height as f32 * TILE_SIZE,
+                        area.width as f32 * unit,
+                        area.height as f32 * unit,
                         1.0,
                     )),
                 ))
@@ -535,13 +544,38 @@ pub fn draw(
     for key in wanted {
         if let Some(chunk) = drawn.chunks.get(&key)
             && let Some(material) = materials.get(&chunk.material)
-            && (material.rim != rim || material.ocean != ocean || material.shadow != shadow)
+            && (material.rim != rim
+                || material.ocean != ocean
+                || material.shadow != shadow
+                || material.tint != tint)
             && let Some(mut material) = materials.get_mut(&chunk.material)
         {
+            material.tint = tint;
             material.rim = rim;
             material.ocean = ocean;
             material.shadow = shadow;
         }
+    }
+}
+
+pub fn darken(
+    night: Res<crate::quality::Night>,
+    mut clear: ResMut<ClearColor>,
+    mut objects: ResMut<Assets<crate::objects_view::ObjectMaterial>>,
+    drawn: Res<crate::objects_view::ObjectsDrawn>,
+) {
+    if !night.is_changed() {
+        return;
+    }
+    let ocean = look::DEEP_OCEAN.color().map(|c| f32::from(c) / 255.0);
+    let [r, g, b] = night.background(ocean);
+    clear.0 = Color::srgb(r, g, b);
+    let [tr, tg, tb] = night.tint();
+    if let Some(handle) = &drawn.material
+        && let Some(mut material) = objects.get_mut(handle)
+    {
+        let linear = Color::srgb(tr, tg, tb).to_linear();
+        material.wind.tint = Vec4::new(linear.red, linear.green, linear.blue, 1.0);
     }
 }
 
@@ -556,7 +590,6 @@ pub fn pulse(time: Res<Time>, clock: Option<Res<WorldClock>>, mut runup: ResMut<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compose::PX;
     use econbox_tile::{Ground, Tile};
     use econbox_tilemap::TilePos;
 
@@ -647,8 +680,9 @@ mod tests {
         let canvas = compose::compose(&map, chunk_area(&map, 1, 1));
         let (tiles, rims) = chunk_images(&canvas);
 
-        assert_eq!((tiles.width(), tiles.height()), (36 * PX, 6 * PX));
-        assert_eq!((rims.width(), rims.height()), (36 * PX, 6 * PX));
+        let size = (36 * PX + compose::MARGIN, 6 * PX + compose::MARGIN);
+        assert_eq!((tiles.width(), tiles.height()), size);
+        assert_eq!((rims.width(), rims.height()), size);
         assert_eq!(tiles.texture_descriptor.format, TextureFormat::Rgba8Unorm);
     }
 
@@ -665,7 +699,8 @@ mod tests {
         let after = tiles.data.expect("pixels");
         let whole = compose::compose(&map, origin).rgba();
 
-        let at = |x: u32, y: u32| ((y * 256 + x) * 4) as usize;
+        let at =
+            |x: i32, y: i32| (((y - origin.y) * origin.width as i32 + (x - origin.x)) * 4) as usize;
         assert_eq!(
             after[at(81, 49)..at(81, 49) + 4],
             whole[at(81, 49)..at(81, 49) + 4]

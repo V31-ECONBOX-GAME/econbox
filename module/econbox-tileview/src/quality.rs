@@ -259,3 +259,40 @@ mod tests {
         assert!(seen_max && seen_min);
     }
 }
+
+pub const NIGHT: [f32; 3] = [5.0 / 255.0, 0.0, 63.0 / 255.0];
+
+#[derive(Resource, Debug, Clone, Copy, Default, PartialEq)]
+pub struct Night(pub f32);
+
+impl Night {
+    pub fn tint(self) -> [f32; 3] {
+        blend(NIGHT, [1.0; 3], self.0)
+    }
+
+    pub fn background(self, ocean: [f32; 3]) -> [f32; 3] {
+        let [r, g, b] = blend(NIGHT, ocean, self.0);
+        if self.0 > 0.0 {
+            [r - 2.0 / 255.0, g, b - 1.0 / 51.0]
+        } else {
+            [r, g, b]
+        }
+    }
+}
+
+pub fn blend(from: [f32; 3], to: [f32; 3], amount: f32) -> [f32; 3] {
+    [0, 1, 2].map(|i| from[i] * amount + to[i] * (1.0 - amount))
+}
+
+#[cfg(test)]
+mod night_tests {
+    use super::*;
+
+    #[test]
+    fn day_leaves_colours_alone_and_night_pulls_them_to_deep_blue() {
+        assert_eq!(Night(0.0).tint(), [1.0, 1.0, 1.0]);
+        let dark = Night(0.6).tint();
+        assert!(dark[2] > dark[0] && dark[0] < 0.5);
+        assert_eq!(Night(0.0).background([0.2, 0.44, 0.8]), [0.2, 0.44, 0.8]);
+    }
+}

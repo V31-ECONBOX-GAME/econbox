@@ -13,6 +13,7 @@ pub const EDGE_NO_OCEAN: [u8; 3] = [0x49, 0x49, 0x49];
 pub const EDGE_HILLS: [u8; 3] = [0x31, 0x33, 0x33];
 pub const EDGE_MOUNTAIN: [u8; 3] = [0x2c, 0x30, 0x32];
 pub const EDGE_ALPHA: u8 = 26;
+pub const LAVA_GLOW: f32 = 0.25;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Edge {
@@ -82,12 +83,21 @@ pub fn minimap(map: &TileMap, x: u32, y: u32) -> [u8; 4] {
         Some([r, g, b, _]) => [r, g, b],
         None => objects::base_color(map.at(x, y)),
     };
-    let [r, g, b] = match edge(map, x, y) {
+    let mut rgb = match edge(map, x, y) {
         None => base,
         Some(Edge::Solid(rgb)) => rgb,
         Some(Edge::Shade) => shade(base),
     };
-    [r, g, b, 255]
+    let here = look::of(map.at(x, y));
+    if here.layer == Layer::Lava {
+        let glow = here.color();
+        rgb = [0, 1, 2].map(|i| {
+            (f32::from(rgb[i]) + f32::from(glow[i]) * LAVA_GLOW)
+                .round()
+                .min(255.0) as u8
+        });
+    }
+    [rgb[0], rgb[1], rgb[2], 255]
 }
 
 pub fn minimap_pixels(map: &TileMap) -> Vec<u8> {
@@ -155,29 +165,57 @@ pub fn border(map: &TileMap, x: u32, y: u32) -> Option<Border> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Area {
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
     pub width: u32,
     pub height: u32,
 }
+
+pub const MARGIN: u32 = 3;
 
 impl Area {
     pub fn tiles(map: &TileMap, x: u32, y: u32, width: u32, height: u32) -> Self {
         let x1 = (x + width).min(map.width);
         let y1 = (y + height).min(map.height);
         Self {
-            x: x * PX,
-            y: y * PX,
+            x: (x * PX) as i32,
+            y: (y * PX) as i32,
             width: x1.saturating_sub(x) * PX,
             height: y1.saturating_sub(y) * PX,
         }
     }
 
+    pub fn with_margin(self, map: &TileMap) -> Self {
+        let left = if self.x == 0 { MARGIN } else { 0 };
+        let top = if self.y == 0 { MARGIN } else { 0 };
+        let right = if self.right() == (map.width * PX) as i32 {
+            MARGIN
+        } else {
+            0
+        };
+        let bottom = if self.bottom() == (map.height * PX) as i32 {
+            MARGIN
+        } else {
+            0
+        };
+        Self {
+            x: self.x - left as i32,
+            y: self.y - top as i32,
+            width: self.width + left + right,
+            height: self.height + top + bottom,
+        }
+    }
+
+    pub fn right(&self) -> i32 {
+        self.x + self.width as i32
+    }
+
+    pub fn bottom(&self) -> i32 {
+        self.y + self.height as i32
+    }
+
     fn contains(&self, x: i32, y: i32) -> bool {
-        x >= self.x as i32
-            && y >= self.y as i32
-            && x < (self.x + self.width) as i32
-            && y < (self.y + self.height) as i32
+        x >= self.x && y >= self.y && x < self.right() && y < self.bottom()
     }
 }
 
@@ -215,7 +253,7 @@ impl Canvas {
     }
 
     pub fn shade_at(&self, x: u32, y: u32) -> u8 {
-        self.shade[self.index(x, y)]
+        self.shade[self.index(x as i32, y as i32)]
     }
 
     fn darken(&mut self, mask: &Pixmap, left: i32, top: i32) {
@@ -227,7 +265,7 @@ impl Canvas {
                 let x = left + i32::from(sx);
                 let y = top + i32::from(sy);
                 if self.area.contains(x, y) {
-                    let at = self.index(x as u32, y as u32);
+                    let at = self.index(x, y);
                     self.shade[at] = 255;
                 }
             }
@@ -235,15 +273,15 @@ impl Canvas {
     }
 
     pub fn at(&self, x: u32, y: u32) -> [u8; 4] {
-        self.color[self.index(x, y)]
+        self.color[self.index(x as i32, y as i32)]
     }
 
     pub fn rim_at(&self, x: u32, y: u32) -> u8 {
-        self.rim[self.index(x, y)]
+        self.rim[self.index(x as i32, y as i32)]
     }
 
-    fn index(&self, x: u32, y: u32) -> usize {
-        ((y - self.area.y) * self.area.width + (x - self.area.x)) as usize
+    fn index(&self, x: i32, y: i32) -> usize {
+        ((y - self.area.y) as u32 * self.area.width + (x - self.area.x) as u32) as usize
     }
 
     fn stamp(&mut self, sprite: &Pixmap, tx: u32, ty: u32, ink: Ink) {
@@ -263,7 +301,7 @@ impl Canvas {
                     continue;
                 }
 
-                let at = self.index(x as u32, y as u32);
+                let at = self.index(x, y);
                 match ink {
                     Ink::Tile => {
                         self.color[at] = pixel;
@@ -384,10 +422,9 @@ pub fn shadow_reach() -> (u32, u32) {
 
 fn cast_shadows(map: &TileMap, area: Area, canvas: &mut Canvas) {
     let (wide, tall) = shadow_reach();
-    let tx0 = (area.x / PX).saturating_sub(wide);
-    let ty0 = (area.y / PX).saturating_sub(1);
-    let tx1 = ((area.x + area.width - 1) / PX + wide).min(map.width - 1);
-    let ty1 = ((area.y + area.height - 1) / PX + tall).min(map.height - 1);
+    let Some((tx0, ty0, tx1, ty1)) = tile_span(map, area, wide, 1, wide, tall) else {
+        return;
+    };
 
     for ty in ty0..=ty1 {
         for tx in tx0..=tx1 {
@@ -414,6 +451,22 @@ fn cast_shadows(map: &TileMap, area: Area, canvas: &mut Canvas) {
 
 pub const REACH: u32 = 2;
 
+fn tile_span(
+    map: &TileMap,
+    area: Area,
+    left: u32,
+    up: u32,
+    right: u32,
+    down: u32,
+) -> Option<(u32, u32, u32, u32)> {
+    let px = PX as i32;
+    let tx0 = (area.x.div_euclid(px) - left as i32).max(0);
+    let ty0 = (area.y.div_euclid(px) - up as i32).max(0);
+    let tx1 = ((area.right() - 1).div_euclid(px) + right as i32).min(map.width as i32 - 1);
+    let ty1 = ((area.bottom() - 1).div_euclid(px) + down as i32).min(map.height as i32 - 1);
+    (tx0 <= tx1 && ty0 <= ty1).then_some((tx0 as u32, ty0 as u32, tx1 as u32, ty1 as u32))
+}
+
 pub fn compose(map: &TileMap, area: Area) -> Canvas {
     let mut canvas = Canvas::new(area);
 
@@ -421,10 +474,9 @@ pub fn compose(map: &TileMap, area: Area) -> Canvas {
         return canvas;
     }
 
-    let tx0 = (area.x / PX).saturating_sub(REACH);
-    let ty0 = (area.y / PX).saturating_sub(REACH);
-    let tx1 = ((area.x + area.width - 1) / PX + REACH).min(map.width - 1);
-    let ty1 = ((area.y + area.height - 1) / PX + REACH).min(map.height - 1);
+    let Some((tx0, ty0, tx1, ty1)) = tile_span(map, area, REACH, REACH, REACH, REACH) else {
+        return canvas;
+    };
 
     let mut list = Vec::new();
     for ty in ty0..=ty1 {
@@ -551,6 +603,15 @@ mod tests {
     }
 
     #[test]
+    fn lava_glows_a_quarter_brighter_on_the_map() {
+        let map = TileMap::filled(3, 3, bare(Ground::Lava2));
+        let [r, g, b] = Ground::Lava2.color();
+        let lift = |c: u8| (f32::from(c) * 1.25).round().min(255.0) as u8;
+
+        assert_eq!(minimap(&map, 1, 1), [lift(r), lift(g), lift(b), 255]);
+    }
+
+    #[test]
     fn the_minimap_pixel_is_the_tile_colour_under_its_edge() {
         let map = strip(&[
             bare(Ground::SoilHigh),
@@ -663,6 +724,20 @@ mod tests {
 
         assert!(near(canvas.at(7, 2)), "{:?}", canvas.at(7, 2));
         assert!(near(canvas.at(12, 2)), "{:?}", canvas.at(12, 2));
+    }
+
+    #[test]
+    fn land_on_the_map_edge_spills_its_rim_past_the_map() {
+        let map = TileMap::filled(8, 8, bare(Ground::Sand));
+        let area = Area::tiles(&map, 0, 0, 8, 8).with_margin(&map);
+        let canvas = compose(&map, area);
+
+        assert_eq!((area.x, area.y, area.width), (-3, -3, 38));
+        let outside = |x: i32, y: i32| canvas.color[canvas.index(x, y)];
+        let rim = |x: i32, y: i32| canvas.rim[canvas.index(x, y)];
+        assert!(outside(-1, 10)[3] > 0);
+        assert!(rim(-3, 10) > 0);
+        assert_eq!(outside(-3, -3)[3], 0);
     }
 
     #[test]

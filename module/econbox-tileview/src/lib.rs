@@ -1,6 +1,7 @@
 //! Draws the tile map the way WorldBox does: sprite tiles up close, one pixel per tile from afar.
 
 pub mod art;
+pub mod border;
 pub mod compose;
 pub mod look;
 pub mod objects;
@@ -18,7 +19,8 @@ use econbox_camera::WorldBounds;
 use econbox_tilemap::Painted;
 use econbox_worldgen::{WorldConfig, generate};
 
-pub use quality::{MapMode, Runup};
+pub use border::PowerSelected;
+pub use quality::{MapMode, Night, Runup};
 pub use sleek::{ScreenEffects, ScreenOptions, SleekPlugin};
 pub use view::{
     ChunkMaterial, Drawn, FLASH_LAYER, MAP_LAYER, MapLayer, TILES_LAYER, TileChunk, world_size,
@@ -56,6 +58,8 @@ impl Plugin for TileViewPlugin {
             SleekPlugin,
         ))
         .init_resource::<objects_view::ObjectClock>()
+        .init_resource::<quality::Night>()
+        .init_resource::<border::PowerSelected>()
         .init_resource::<objects_view::ObjectsDrawn>()
         .init_resource::<WorldSeed>()
         .init_resource::<WorldSettings>()

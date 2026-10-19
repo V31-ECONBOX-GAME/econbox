@@ -9,6 +9,7 @@ struct FragmentInput {
 @group(2) @binding(4) var runup: texture_2d<f32>;
 @group(2) @binding(5) var runup_sampler: sampler;
 @group(2) @binding(6) var<uniform> shadow: vec4<f32>;
+@group(2) @binding(7) var<uniform> tint: vec4<f32>;
 
 fn to_linear(color: vec3<f32>) -> vec3<f32> {
     let low = color / 12.92;
@@ -27,5 +28,5 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     let cover = 1.0 - pow(1.0 - rim.a, count);
     color = mix(color, rim.rgb, cover);
     color = color * (1.0 - shadow.x * step(0.5, marks.g));
-    return vec4(to_linear(color), 1.0);
+    return vec4(to_linear(color * tint.rgb), 1.0);
 }

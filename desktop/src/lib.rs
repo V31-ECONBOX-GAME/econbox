@@ -11,7 +11,7 @@ use econbox_clock::ClockPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_flora::FloraPlugin;
-use econbox_tileview::{ScreenOptions, TileViewPlugin};
+use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
 use prelude::*;
@@ -57,7 +57,7 @@ pub fn app_with(source: &Config) -> App {
             FloraPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin))
-        .add_systems(Update, screen_options);
+        .add_systems(Update, (screen_options, power_selected));
 
     #[cfg(feature = "dev")]
     {
@@ -116,6 +116,10 @@ fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<Scr
         shadows: options.on("shadows"),
     };
     screen.set_if_neq(wanted);
+}
+
+fn power_selected(brush: Res<Brush>, mut selected: ResMut<PowerSelected>) {
+    selected.set_if_neq(PowerSelected(brush.tool != Tool::Inspect));
 }
 
 pub fn headless_app() -> App {
