@@ -23,6 +23,7 @@ mod sound;
 pub mod strip;
 mod tabs;
 mod tips;
+mod unselect;
 pub mod windows;
 
 use bevy::app::PropagateSet;
@@ -254,7 +255,7 @@ impl Plugin for ToolbarPlugin {
                     .chain(),
             )
             .add_systems(PreUpdate, pointer::over_ui.after(PickingSystems::Hover))
-            .add_systems(Update, clouds::summon)
+            .add_systems(Update, (clouds::summon, unselect::on_window))
             .add_systems(
                 Update,
                 (

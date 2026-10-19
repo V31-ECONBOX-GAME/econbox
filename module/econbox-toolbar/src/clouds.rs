@@ -1,5 +1,5 @@
-use crate::Chosen;
 use crate::catalog::Def;
+use crate::{Chosen, Cue};
 use bevy::prelude::*;
 use econbox_brush::{PointerOverUi, SPAWN_GAP};
 use econbox_clouds::SpawnCloud;
@@ -19,6 +19,7 @@ pub fn summon(
     time: Res<Time>,
     mut rest: Local<f32>,
     mut clouds: MessageWriter<SpawnCloud>,
+    mut cues: MessageWriter<Cue>,
 ) {
     let Some(kind) = chosen.def().and_then(Def::cloud) else {
         return;
@@ -42,6 +43,7 @@ pub fn summon(
     let Some(pos) = hovered.pos else { return };
 
     clouds.write(SpawnCloud { kind, pos });
+    cues.write(Cue::Cloud);
     *rest = SPAWN_GAP;
 }
 
@@ -83,6 +85,7 @@ mod tests {
             .init_resource::<ButtonInput<MouseButton>>()
             .init_resource::<ButtonInput<KeyCode>>()
             .add_message::<SpawnCloud>()
+            .add_message::<Cue>()
             .add_systems(Update, summon);
         app.update();
         app
@@ -94,7 +97,14 @@ mod tests {
             .resource_mut::<ButtonInput<MouseButton>>()
             .clear();
         let messages = app.world().resource::<Messages<SpawnCloud>>();
-        messages.iter_current_update_messages().copied().collect()
+        let called: Vec<SpawnCloud> = messages.iter_current_update_messages().copied().collect();
+        let heard = app.world().resource::<Messages<Cue>>();
+        let puffs = heard
+            .iter_current_update_messages()
+            .filter(|cue| **cue == Cue::Cloud)
+            .count();
+        assert_eq!(puffs, called.len());
+        called
     }
 
     fn press(app: &mut App) {

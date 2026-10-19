@@ -4854,8 +4854,8 @@ pub const NATURE: TabDef = TabDef {
         Item::Thin,
         Item::Button(Def {
             id: "cloud",
-            name: "Cloud",
-            about: "A plain cloud that drifts across the sky.",
+            name: "Cloud of Life",
+            about: "A cloud that scatters seeds of life as it drifts.",
             kind: Kind::Spawn,
             act: Act::Cloud(CloudKind::Normal),
             look: Look::Icon(Icon::Cloud, Tint::Rgb([0xe8, 0xee, 0xf4])),
@@ -4880,7 +4880,7 @@ pub const NATURE: TabDef = TabDef {
         }),
         Item::Button(Def {
             id: "cloud_lightning",
-            name: "Storm Cloud",
+            name: "Thunder Cloud",
             about: "A cloud that throws lightning.",
             kind: Kind::Spawn,
             act: Act::Cloud(CloudKind::Lightning),
@@ -4893,7 +4893,7 @@ pub const NATURE: TabDef = TabDef {
         }),
         Item::Button(Def {
             id: "cloud_fire",
-            name: "Fire Cloud",
+            name: "Hellcloud",
             about: "A cloud that drops flames.",
             kind: Kind::Spawn,
             act: Act::Cloud(CloudKind::Fire),
