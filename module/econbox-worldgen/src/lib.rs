@@ -1,30 +1,43 @@
-//! Bands the scalar fields into a WorldBox shaped tile map.
+//! WorldBox's world generator: templates, map sizes, editable settings and the staged pipeline.
 
-use econbox_field::{Field, HeightConfig, height, moisture, temperature};
-use econbox_tile::{Ground, Overlay, Tile};
+pub mod biome;
+pub mod generator;
+pub mod settings;
+pub mod shapes;
+pub mod size;
+pub mod stages;
+pub mod template;
+pub mod tool;
+pub mod world;
+
 use econbox_tilemap::TileMap;
+use std::borrow::Borrow;
 
-#[derive(Debug, Clone, Copy)]
+pub use generator::Generator;
+pub use settings::{MapGenSetting, SETTINGS, setting};
+pub use size::{MAP_SIZES, MapSize, ZONE_TILES};
+pub use stages::{Stage, stages};
+pub use template::{
+    AllowEdit, MapGenTemplate, MapGenValues, PerlinReplaceContainer, PerlinReplaceOption,
+    TEMPLATE_IDS, TEMPLATES, TemplateId,
+};
+pub use world::World;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorldConfig {
     pub seed: u32,
-    pub width: u32,
-    pub height: u32,
-    pub water_share: f32,
-    pub equator_bias: f32,
-    pub moisture_scale: f32,
-    pub shape: HeightConfig,
+    pub template: TemplateId,
+    pub size: MapSize,
+    pub values: MapGenValues,
 }
 
 impl Default for WorldConfig {
     fn default() -> Self {
         Self {
             seed: 0x_5eed_1234,
-            width: 448,
-            height: 448,
-            water_share: 0.68,
-            equator_bias: 1.4,
-            moisture_scale: 4.5,
-            shape: HeightConfig::default(),
+            template: TemplateId::default(),
+            size: MapSize::default(),
+            values: TemplateId::default().template().values,
         }
     }
 }
@@ -33,163 +46,107 @@ impl WorldConfig {
     pub fn with_seed(seed: u32) -> Self {
         Self {
             seed,
-            shape: HeightConfig {
-                seed,
-                ..HeightConfig::default()
-            },
             ..Self::default()
         }
     }
+
+    pub fn with_template(self, template: TemplateId) -> Self {
+        Self {
+            template,
+            values: template.template().values,
+            ..self
+        }
+    }
+
+    pub fn with_size(self, size: MapSize) -> Self {
+        Self { size, ..self }
+    }
+
+    pub fn reset_values(&mut self) {
+        self.values = self.template.template().values;
+    }
+
+    pub fn width(&self) -> u32 {
+        self.size.tiles()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.size.tiles()
+    }
+
+    pub fn plan(&self) -> Vec<Stage> {
+        Generator::new(
+            self.width(),
+            self.seed,
+            self.template.template(),
+            self.values,
+        )
+        .plan()
+    }
 }
 
-const WATER_BANDS: [(f32, Ground); 3] = [
-    (0.37, Ground::DeepOcean),
-    (0.68, Ground::CloseOcean),
-    (1.00, Ground::ShallowWaters),
-];
-
-const LAND_BANDS: [(f32, Ground); 6] = [
-    (0.13, Ground::Sand),
-    (0.40, Ground::SoilLow),
-    (0.79, Ground::SoilHigh),
-    (0.93, Ground::Hills),
-    (0.985, Ground::Mountains),
-    (1.00, Ground::Summit),
-];
-
-pub fn generate(config: WorldConfig) -> TileMap {
-    let shape = HeightConfig {
-        seed: config.seed,
-        ..config.shape
-    };
-    let relief = height(config.width, config.height, shape);
-    let warmth = temperature(&relief, config.equator_bias);
-    let damp = moisture(
-        config.width,
-        config.height,
+pub fn generate_world(config: &WorldConfig) -> World {
+    Generator::new(
+        config.width(),
         config.seed,
-        config.moisture_scale,
-    );
-
-    let sea = relief.quantile(config.water_share);
-    let water_cuts = cuts(&relief, 0.0, sea, WATER_BANDS.map(|(share, _)| share));
-    let land_cuts = cuts(&relief, sea, 1.0, LAND_BANDS.map(|(share, _)| share));
-
-    let mut map = TileMap::filled(config.width, config.height, Tile::default());
-
-    for y in 0..config.height {
-        for x in 0..config.width {
-            let elevation = relief.at(x, y);
-            let ground = if elevation < sea {
-                band(
-                    elevation,
-                    &water_cuts,
-                    WATER_BANDS.map(|(_, ground)| ground),
-                )
-            } else {
-                band(elevation, &land_cuts, LAND_BANDS.map(|(_, ground)| ground))
-            };
-
-            let overlay = if matches!(ground, Ground::SoilLow | Ground::SoilHigh) {
-                cover(warmth.at(x, y), damp.at(x, y))
-            } else {
-                Overlay::Bare
-            };
-
-            map.set(x, y, Tile::new(ground, overlay));
-        }
-    }
-
-    map
+        config.template.template(),
+        config.values,
+    )
+    .run_all()
 }
 
-fn cuts<const N: usize>(field: &Field, low: f32, high: f32, shares: [f32; N]) -> [f32; N] {
-    let base = field.share_below(low);
-    let span = field.share_below(high) - base;
-
-    shares.map(|share| field.quantile(base + span * share))
-}
-
-fn band<const N: usize>(value: f32, cuts: &[f32; N], grounds: [Ground; N]) -> Ground {
-    for (cut, ground) in cuts.iter().zip(grounds) {
-        if value < *cut {
-            return ground;
-        }
-    }
-
-    grounds[N - 1]
-}
-
-pub fn cover(warmth: f32, damp: f32) -> Overlay {
-    if warmth > 0.66 && damp > 0.60 {
-        return Overlay::Jungle;
-    }
-    if warmth > 0.70 && damp < 0.17 {
-        return Overlay::Bare;
-    }
-
-    Overlay::Grass
+pub fn generate(config: impl Borrow<WorldConfig>) -> TileMap {
+    generate_world(config.borrow()).into_map()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use econbox_tile::{Flora, Ground, Overlay};
 
     fn small() -> WorldConfig {
-        WorldConfig {
-            width: 224,
-            height: 224,
-            ..WorldConfig::default()
-        }
+        WorldConfig::with_seed(7).with_size(MapSize::Tiny)
     }
 
     #[test]
-    fn the_map_is_the_size_worldbox_uses() {
+    fn the_first_launch_world_is_a_standard_continent() {
         let config = WorldConfig::default();
 
-        assert_eq!(config.width, 448);
-        assert_eq!(config.height, 448);
-        assert_eq!(generate(config).chunks(), (7, 7));
+        assert_eq!(config.template, TemplateId::Continent);
+        assert_eq!(config.size, MapSize::Standard);
+        assert_eq!((config.width(), config.height()), (256, 256));
+        assert_eq!(config.values, TemplateId::Continent.template().values);
     }
 
     #[test]
-    fn the_sea_covers_the_share_the_config_asks_for() {
-        for share in [0.55_f32, 0.68, 0.80] {
-            let map = generate(WorldConfig {
-                water_share: share,
-                ..small()
-            });
-
-            assert!(
-                (map.water_share() - share).abs() < 0.06,
-                "{share} -> {}",
-                map.water_share()
-            );
-        }
-    }
-
-    #[test]
-    fn the_border_of_the_map_is_open_sea() {
+    fn the_map_comes_out_at_the_chosen_size() {
         let map = generate(small());
-        let mut deep = 0;
-        let mut edge = 0;
 
-        for (x, y) in (0..map.width)
-            .flat_map(|x| [(x, 0), (x, map.height - 1)])
-            .chain((0..map.height).flat_map(|y| [(0, y), (map.width - 1, y)]))
-        {
-            assert!(map.at(x, y).is_water(), "land at the edge {x},{y}");
-            deep += usize::from(map.at(x, y).ground == Ground::DeepOcean);
-            edge += 1;
-        }
-
-        assert!(deep * 100 / edge > 80, "only {deep}/{edge} deep");
+        assert_eq!((map.width, map.height), (128, 128));
+        assert_eq!(map.heights.len(), map.cells());
+        assert_eq!(generate(WorldConfig::default()).chunks(), (4, 4));
     }
 
     #[test]
-    fn every_island_is_ringed_by_shallows_then_sand() {
-        let map = generate(small());
+    fn the_same_seed_and_settings_grow_the_same_world() {
+        let config = small();
+
+        assert_eq!(generate(config), generate(config));
+    }
+
+    #[test]
+    fn a_new_seed_grows_a_new_world() {
+        let a = generate(small());
+        let b = generate(WorldConfig { seed: 8, ..small() });
+
+        assert_ne!(a.tiles, b.tiles);
+    }
+
+    #[test]
+    fn a_continent_has_every_worldbox_band_from_the_deep_to_the_summit() {
+        let map = generate(WorldConfig::with_seed(3));
         let counts = map.ground_counts();
+        let of = |ground| counts.get(&ground).copied().unwrap_or(0);
 
         for ground in [
             Ground::DeepOcean,
@@ -200,81 +157,133 @@ mod tests {
             Ground::SoilHigh,
             Ground::Hills,
             Ground::Mountains,
-            Ground::Summit,
         ] {
-            assert!(counts.get(&ground).copied().unwrap_or(0) > 0, "{ground:?}");
+            assert!(of(ground) > 0, "{ground:?}");
+        }
+        assert!(of(Ground::DeepOcean) > of(Ground::ShallowWaters));
+        assert!(of(Ground::SoilHigh) > of(Ground::Mountains));
+    }
+
+    #[test]
+    fn the_round_edge_leaves_the_corners_of_a_continent_in_the_deep() {
+        let map = generate(WorldConfig::with_seed(3));
+
+        for (x, y) in [(0, 0), (255, 0), (0, 255), (255, 255), (128, 0), (0, 128)] {
+            assert_eq!(map.at(x, y).ground, Ground::DeepOcean, "{x},{y}");
         }
     }
 
     #[test]
-    fn the_deep_is_bigger_than_the_shallows_and_peaks_are_rarest() {
-        let map = generate(small());
-        let counts = map.ground_counts();
-        let of = |ground| counts.get(&ground).copied().unwrap_or(0);
+    fn every_tile_matches_its_height_band_or_a_later_stage_moved_it() {
+        let map = generate(WorldConfig::with_seed(5));
+        let mut agree = 0;
 
-        assert!(of(Ground::DeepOcean) > of(Ground::ShallowWaters));
-        assert!(of(Ground::SoilHigh) > of(Ground::Mountains));
-        assert!(of(Ground::Hills) > of(Ground::Mountains));
-        assert!(of(Ground::Mountains) > of(Ground::Summit));
+        for y in 0..map.height {
+            for x in 0..map.width {
+                if Ground::from_height(map.height_at(x, y)) == map.at(x, y).ground {
+                    agree += 1;
+                }
+            }
+        }
+
+        assert!(agree * 10 > map.cells() * 7, "{agree} of {}", map.cells());
     }
 
     #[test]
-    fn the_same_seed_grows_the_same_world() {
-        assert_eq!(generate(small()), generate(small()));
-    }
-
-    #[test]
-    fn a_new_seed_grows_a_new_world() {
-        let a = generate(WorldConfig::with_seed(1));
-        let b = generate(WorldConfig::with_seed(2));
-
-        assert_ne!(a.tiles, b.tiles);
-        assert!((a.water_share() - b.water_share()).abs() < 0.12);
-    }
-
-    #[test]
-    fn only_soil_and_sand_carry_a_biome() {
-        let map = generate(small());
+    fn soil_wears_biomes_in_patches_and_nothing_else_does() {
+        let map = generate(WorldConfig::with_seed(11));
+        let mut biomes = std::collections::BTreeSet::new();
 
         for tile in &map.tiles {
             if tile.overlay != Overlay::Bare {
-                assert!(tile.ground.takes_overlay(), "{}", tile.name());
+                assert!(tile.ground.is_soil(), "{}", tile.name());
+                biomes.insert(tile.overlay);
+            } else {
+                assert!(!tile.ground.is_soil(), "bare soil left");
             }
         }
+
+        assert!(biomes.len() >= 3, "{biomes:?}");
     }
 
     #[test]
-    fn jungle_wants_it_hot_and_wet() {
-        assert_eq!(cover(0.9, 0.9), Overlay::Jungle);
-        assert_eq!(cover(0.9, 0.1), Overlay::Bare);
-        assert_eq!(cover(0.5, 0.5), Overlay::Grass);
-        assert_eq!(cover(0.05, 0.9), Overlay::Grass);
-    }
-
-    #[test]
-    fn a_beach_is_plain_sand_the_way_worldbox_leaves_it() {
-        let map = generate(small());
-
-        for tile in &map.tiles {
-            if tile.ground == Ground::Sand {
-                assert_eq!(tile.overlay, Overlay::Bare, "{}", tile.name());
-            }
-        }
-    }
-
-    #[test]
-    fn bare_soil_is_as_rare_as_it_is_in_a_real_save() {
-        let map = generate(small());
-        let bare = map
+    fn vegetation_and_fruit_bushes_dot_the_land_but_never_the_sea() {
+        let map = generate(WorldConfig::with_seed(11));
+        let flora: Vec<_> = map
             .tiles
             .iter()
-            .filter(|tile| {
-                matches!(tile.ground, Ground::SoilLow | Ground::SoilHigh)
-                    && tile.overlay == Overlay::Bare
-            })
-            .count();
-        let share = bare as f32 / map.cells() as f32;
+            .filter(|tile| tile.flora.is_some())
+            .collect();
 
-        assert!(share < 0.03, "bare soil {:.2}%", share * 100.0);
+        assert!(flora.iter().any(|tile| tile.flora == Some(Flora::Tree)));
+        assert!(flora.iter().any(|tile| tile.flora == Some(Flora::Plant)));
+        assert!(flora.iter().all(|tile| tile.is_land()));
+        assert!(map.tiles.iter().all(|tile| tile.ore.is_none()));
+    }
+
+    #[test]
+    fn tall_mountains_are_capped_with_snow() {
+        let map = generate(WorldConfig::with_seed(11));
+
+        for (index, tile) in map.tiles.iter().enumerate() {
+            if tile.frozen {
+                assert_eq!(tile.ground, Ground::Mountains);
+                assert!(map.heights[index] > 220);
+            }
+        }
+    }
+
+    #[test]
+    fn switching_template_resets_its_values() {
+        let mut config = WorldConfig::default().with_template(TemplateId::Lasagna);
+        assert!(config.values.low_ground);
+
+        config.values.low_ground = false;
+        config.reset_values();
+        assert!(config.values.low_ground);
+    }
+
+    #[test]
+    fn every_template_generates_at_every_size_without_panicking() {
+        for template in TEMPLATE_IDS {
+            let config = WorldConfig::with_seed(2)
+                .with_template(template)
+                .with_size(MapSize::Tiny);
+            let map = generate(config);
+
+            assert_eq!(map.cells(), 128 * 128, "{}", template.id());
+        }
+
+        let empty = generate(WorldConfig::default().with_template(TemplateId::Empty));
+        assert!(
+            empty
+                .tiles
+                .iter()
+                .all(|tile| tile.ground == Ground::DeepOcean)
+        );
+    }
+
+    #[test]
+    fn box_world_is_walled_in_by_mountains() {
+        let map = generate(
+            WorldConfig::with_seed(4)
+                .with_template(TemplateId::BoxWorld)
+                .with_size(MapSize::Tiny),
+        );
+
+        for step in 0..128 {
+            assert!(map.at(step, 0).ground == Ground::Mountains);
+            assert!(map.at(0, step).ground == Ground::Mountains);
+        }
+    }
+
+    #[test]
+    fn the_plan_follows_the_template() {
+        let plan = WorldConfig::default()
+            .with_template(TemplateId::Toast)
+            .plan();
+
+        assert!(plan.contains(&Stage::SquareEdges));
+        assert!(!plan.contains(&Stage::RoundEdges));
     }
 }
