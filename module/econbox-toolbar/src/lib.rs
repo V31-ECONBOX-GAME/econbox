@@ -4,6 +4,7 @@ mod art;
 mod bar;
 mod brushes;
 pub mod catalog;
+mod clouds;
 pub mod hovering;
 mod keys;
 pub mod languages;
@@ -32,6 +33,7 @@ use bevy::ui::ComputedUiRenderTargetInfo;
 use catalog::{Act, Def, Kind, TabId};
 use econbox_brush::{Brush, ForcedBrush, Shape, Tool, named};
 use econbox_clock::WorldClock;
+use econbox_clouds::SpawnCloud;
 
 pub use catalog::{find, home_of};
 pub use options::{Options, SettingsFile};
@@ -222,6 +224,7 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<languages::Language>()
             .add_message::<Notice>()
             .add_message::<windows::Shown>()
+            .add_message::<SpawnCloud>()
             .add_observer(press::on_click)
             .add_observer(press::on_press)
             .add_observer(side::on_click)
@@ -256,6 +259,7 @@ impl Plugin for ToolbarPlugin {
                 (pointer::over_ui, windows::lock_camera, strip::hint_cursor)
                     .after(PickingSystems::Hover),
             )
+            .add_systems(Update, clouds::summon)
             .add_systems(
                 Update,
                 (

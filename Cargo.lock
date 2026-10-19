@@ -2438,6 +2438,7 @@ dependencies = [
  "econbox-brush",
  "econbox-camera",
  "econbox-clock",
+ "econbox-clouds",
  "econbox-creature",
  "econbox-cursor",
  "econbox-flora",
@@ -2559,6 +2560,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "econbox-clouds"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "econbox-brush",
+ "econbox-camera",
+ "econbox-clock",
+ "econbox-creature",
+ "econbox-cursor",
+ "econbox-tile",
+ "econbox-tilemap",
+]
+
+[[package]]
 name = "econbox-creature"
 version = "0.2.0"
 dependencies = [
@@ -2633,6 +2648,7 @@ dependencies = [
  "econbox-brush",
  "econbox-camera",
  "econbox-clock",
+ "econbox-clouds",
  "econbox-creature",
  "econbox-cursor",
  "econbox-tile",

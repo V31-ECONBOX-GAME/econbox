@@ -18,6 +18,7 @@ econbox-art = { path = "module/econbox-art" }
 econbox-brush = { path = "module/econbox-brush" }
 econbox-camera = { path = "module/econbox-camera" }
 econbox-clock = { path = "module/econbox-clock" }
+econbox-clouds = { path = "module/econbox-clouds" }
 econbox-creature = { path = "module/econbox-creature" }
 econbox-cursor = { path = "module/econbox-cursor" }
 econbox-field = { path = "module/econbox-field" }

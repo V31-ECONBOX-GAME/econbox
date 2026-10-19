@@ -8,6 +8,7 @@ use config::{logs, settings, windows};
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
+use econbox_clouds::CloudsPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_flora::FloraPlugin;
@@ -55,6 +56,7 @@ pub fn app_with(source: &Config) -> App {
             CreaturePlugin,
             BrushPlugin,
             FloraPlugin,
+            CloudsPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin));
 
