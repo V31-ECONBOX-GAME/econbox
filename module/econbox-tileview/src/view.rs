@@ -34,7 +34,9 @@ pub struct ChunkMaterial {
 
 impl Material2d for ChunkMaterial {
     fn fragment_shader() -> ShaderRef {
-        ShaderRef::Path(AssetPath::from_path_buf(embedded_path!("chunk.wgsl")).with_source("embedded"))
+        ShaderRef::Path(
+            AssetPath::from_path_buf(embedded_path!("chunk.wgsl")).with_source("embedded"),
+        )
     }
 }
 
@@ -172,7 +174,8 @@ pub fn visible_tiles(map: &TileMap, centre: Vec2, size: Vec2) -> (u32, u32, u32,
     let right = (centre.x + size.x * 0.5 + half.x) / TILE_SIZE;
     let top = (half.y - (centre.y + size.y * 0.5)) / TILE_SIZE;
     let bottom = (half.y - (centre.y - size.y * 0.5)) / TILE_SIZE;
-    let clamp = |value: f32, limit: u32| (value.floor().max(0.0) as u32).min(limit.saturating_sub(1));
+    let clamp =
+        |value: f32, limit: u32| (value.floor().max(0.0) as u32).min(limit.saturating_sub(1));
     (
         clamp(left - 2.0, map.width),
         clamp(top - 2.0, map.height),
@@ -406,7 +409,9 @@ pub fn draw(
             let map = &*map;
             ComputeTaskPool::get_or_init(TaskPool::new).scope(|scope| {
                 for &(cx, cy) in &missing {
-                    scope.spawn(async move { ((cx, cy), compose::compose(map, chunk_area(map, cx, cy))) });
+                    scope.spawn(async move {
+                        ((cx, cy), compose::compose(map, chunk_area(map, cx, cy)))
+                    });
                 }
             })
         };
@@ -469,7 +474,9 @@ pub fn draw(
             let map = &*map;
             ComputeTaskPool::get_or_init(TaskPool::new).scope(|scope| {
                 for &(bx, by) in &due {
-                    scope.spawn(async move { ((bx, by), compose::compose(map, block_area(map, bx, by))) });
+                    scope.spawn(async move {
+                        ((bx, by), compose::compose(map, block_area(map, bx, by)))
+                    });
                 }
             })
         };
@@ -516,6 +523,89 @@ mod tests {
     use super::*;
     use crate::compose::PX;
     use econbox_tile::{Ground, Tile};
+    use econbox_tilemap::TilePos;
+
+    fn painter(map: TileMap) -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<Painted>()
+            .insert_resource(Assets::<Image>::default())
+            .add_systems(Update, repaint);
+
+        let minimap = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(minimap_image(&map));
+        let mut drawn = Drawn {
+            width: map.width,
+            height: map.height,
+            minimap: Some(minimap),
+            ..Drawn::default()
+        };
+        drawn.chunks.insert(
+            (0, 0),
+            ChunkView {
+                entity: Entity::PLACEHOLDER,
+                tiles: Handle::default(),
+                runup: Handle::default(),
+                material: Handle::default(),
+            },
+        );
+        app.insert_resource(drawn).insert_resource(map);
+        app
+    }
+
+    fn pixel(app: &App, x: u32, y: u32) -> [u8; 4] {
+        let drawn = app.world().resource::<Drawn>();
+        let images = app.world().resource::<Assets<Image>>();
+        let image = images
+            .get(drawn.minimap.as_ref().expect("minimap"))
+            .expect("image");
+        let data = image.data.as_ref().expect("pixels");
+        let at = ((y * drawn.width + x) * 4) as usize;
+        [data[at], data[at + 1], data[at + 2], data[at + 3]]
+    }
+
+    fn stroke(app: &mut App, x: u32, y: u32, tile: Tile) {
+        app.world_mut().resource_mut::<TileMap>().set(x, y, tile);
+        app.world_mut()
+            .write_message(Painted::new(vec![TilePos::new(x, y)]));
+        app.update();
+    }
+
+    #[test]
+    fn a_stroke_and_its_undo_both_reach_the_map_and_queue_the_tiles() {
+        let mut app = painter(TileMap::filled(64, 64, Tile::bare(Ground::SoilHigh)));
+        let before = pixel(&app, 10, 10);
+        let above = pixel(&app, 10, 9);
+
+        stroke(&mut app, 10, 10, Tile::bare(Ground::SoilLow));
+        let [r, g, b] = Ground::SoilLow.color();
+        let [sr, sg, sb] = compose::shade(Ground::SoilHigh.color());
+        assert_eq!(pixel(&app, 10, 10), [r, g, b, 255]);
+        assert_eq!(pixel(&app, 10, 9), [sr, sg, sb, 255]);
+        {
+            let drawn = app.world().resource::<Drawn>();
+            assert!(drawn.dirty.contains(&(1, 1)));
+            assert!(drawn.dirty.contains(&(1, 0)));
+            assert!(!drawn.dirty.contains(&(0, 0)));
+        }
+
+        app.world_mut().resource_mut::<Drawn>().dirty.clear();
+        stroke(&mut app, 10, 10, Tile::bare(Ground::SoilHigh));
+        assert_eq!(pixel(&app, 10, 10), before);
+        assert_eq!(pixel(&app, 10, 9), above);
+        assert!(app.world().resource::<Drawn>().dirty.contains(&(1, 1)));
+    }
+
+    #[test]
+    fn strokes_outside_a_drawn_chunk_queue_nothing() {
+        let mut app = painter(TileMap::filled(192, 64, Tile::bare(Ground::SoilLow)));
+        stroke(&mut app, 150, 10, Tile::bare(Ground::Sand));
+
+        assert!(app.world().resource::<Drawn>().dirty.is_empty());
+        assert_ne!(pixel(&app, 150, 10), pixel(&app, 20, 10));
+    }
 
     #[test]
     fn a_chunk_image_is_four_pixels_per_tile() {
@@ -542,10 +632,19 @@ mod tests {
         let whole = compose::compose(&map, origin).rgba();
 
         let at = |x: u32, y: u32| ((y * 256 + x) * 4) as usize;
-        assert_eq!(after[at(81, 49)..at(81, 49) + 4], whole[at(81, 49)..at(81, 49) + 4]);
-        assert_ne!(after[at(81, 49)..at(81, 49) + 4], before[at(81, 49)..at(81, 49) + 4]);
+        assert_eq!(
+            after[at(81, 49)..at(81, 49) + 4],
+            whole[at(81, 49)..at(81, 49) + 4]
+        );
+        assert_ne!(
+            after[at(81, 49)..at(81, 49) + 4],
+            before[at(81, 49)..at(81, 49) + 4]
+        );
         assert_eq!(after[0..4], before[0..4]);
-        assert_eq!(after[at(200, 200)..at(200, 200) + 4], before[at(200, 200)..at(200, 200) + 4]);
+        assert_eq!(
+            after[at(200, 200)..at(200, 200) + 4],
+            before[at(200, 200)..at(200, 200) + 4]
+        );
     }
 
     #[test]
@@ -564,7 +663,10 @@ mod tests {
         let (x0, y0, x1, y1) = visible_tiles(&map, Vec2::ZERO, Vec2::splat(40.0 * TILE_SIZE));
 
         assert_eq!((x0, y0, x1, y1), (202, 202, 246, 246));
-        assert_eq!(visible_tiles(&map, Vec2::ZERO, Vec2::splat(1e6)), (0, 0, 447, 447));
+        assert_eq!(
+            visible_tiles(&map, Vec2::ZERO, Vec2::splat(1e6)),
+            (0, 0, 447, 447)
+        );
     }
 
     #[test]
@@ -579,6 +681,9 @@ mod tests {
     fn a_tile_centre_follows_the_cursor_convention() {
         let map = TileMap::filled(16, 16, Tile::default());
 
-        assert_eq!(tile_centre(&map, 0.5, 0.5), Vec2::new(-7.5, 7.5) * TILE_SIZE);
+        assert_eq!(
+            tile_centre(&map, 0.5, 0.5),
+            Vec2::new(-7.5, 7.5) * TILE_SIZE
+        );
     }
 }

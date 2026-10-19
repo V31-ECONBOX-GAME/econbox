@@ -267,7 +267,13 @@ fn grass_of(paint: Paint) -> [u8; 3] {
         .unwrap_or_else(|| Ground::SoilLow.color())
 }
 
-fn flat(look: &Look, variant: u8, shades: &[([u8; 3], u32)], clump: u32, edge: Option<[u8; 3]>) -> Pixmap {
+fn flat(
+    look: &Look,
+    variant: u8,
+    shades: &[([u8; 3], u32)],
+    clump: u32,
+    edge: Option<[u8; 3]>,
+) -> Pixmap {
     let mut dice = Dice::new(look.id, variant);
     let mut map = Pixmap::blank(8, 8, 2, 2);
     map.spans(&FLAT, shades[0].0);
@@ -285,8 +291,23 @@ fn water(look: &Look, variant: u8) -> Pixmap {
     let mut dice = Dice::new(look.id, variant);
     let mut map = Pixmap::blank(8, 8, 2, 2);
     map.spans(&FLAT, base);
-    sprinkle(&mut map, &mut dice, lighten(base, 0.07), 2, (1, 5));
-    sprinkle(&mut map, &mut dice, lighten(base, 0.13), 1, (2, 4));
+
+    if look.paint == Paint::Ground(Ground::ShallowWaters) {
+        shaded(
+            &mut map,
+            &mut dice,
+            &[
+                (base, 6),
+                (lighten(base, 0.09), 4),
+                (lighten(base, 0.06), 1),
+            ],
+            30,
+        );
+    } else {
+        sprinkle(&mut map, &mut dice, lighten(base, 0.04), 1, (1, 5));
+        sprinkle(&mut map, &mut dice, lighten(base, 0.08), 1, (2, 4));
+    }
+
     lip(&mut map, 6, mix(base, deeper(look.paint), 0.5));
     map
 }
@@ -315,7 +336,13 @@ fn hills(look: &Look, variant: u8) -> Pixmap {
     );
 
     if variant == 2 {
-        sprinkle(&mut map, &mut dice, mix(base, grass_of(look.paint), 0.3), 6, (2, 5));
+        sprinkle(
+            &mut map,
+            &mut dice,
+            mix(base, grass_of(look.paint), 0.3),
+            6,
+            (2, 5),
+        );
     }
 
     for x in 1..7 {
@@ -368,36 +395,53 @@ fn summit(look: &Look, variant: u8) -> Pixmap {
     } else {
         Pixmap::blank(8, 8, 2, 3)
     };
+    let top = map.top;
     let bottom = map.height - 1;
     let apex_x = 2 + dice.below(4) as u8;
     let apex_y = match variant {
-        3 | 4 => 2 + dice.below(2) as u8,
+        3 | 4 => top - 1,
         2 => 1,
         _ => dice.below(2) as u8,
     };
 
-    for y in apex_y..=bottom {
-        let spread = (y - apex_y + 1) / 2 + u8::from(y > apex_y);
-        let (first, last) = if y == bottom {
-            (2, 5)
-        } else {
-            (apex_x.saturating_sub(spread).max(1), (apex_x + spread).min(6))
-        };
-
+    for y in apex_y..top {
+        let reach = y - apex_y;
+        let first = apex_x.saturating_sub(reach).max(1);
+        let last = (apex_x + reach / 2 + 1).min(6);
         for x in first..=last {
-            let rgb = if y == bottom {
-                scale(base, if dice.chance(50) { 0.84 } else { 0.66 })
-            } else if x < apex_x {
-                scale(base, 1.24)
-            } else if x == apex_x {
-                if dice.chance(50) { base } else { scale(base, 1.24) }
-            } else if x > apex_x + 1 {
-                scale(base, 0.66)
-            } else {
-                scale(base, 0.84)
-            };
-            map.put(x, y, rgb);
+            map.put(x, y, base);
         }
+    }
+    map.spans(
+        &[
+            (top, 2, 6),
+            (top + 1, 1, 6),
+            (top + 2, 1, 6),
+            (top + 3, 1, 6),
+            (bottom, 2, 5),
+        ],
+        base,
+    );
+
+    for (x, y) in map.cells() {
+        let rgb = if y == bottom {
+            scale(base, if dice.chance(45) { 0.84 } else { 0.66 })
+        } else if x < apex_x {
+            scale(base, if dice.chance(75) { 1.24 } else { 1.0 })
+        } else if x == apex_x {
+            if dice.chance(50) {
+                base
+            } else {
+                scale(base, 1.24)
+            }
+        } else if dice.chance(25) {
+            scale(base, 0.66)
+        } else if dice.chance(70) {
+            scale(base, 0.84)
+        } else {
+            base
+        };
+        map.put(x, y, rgb);
     }
 
     map
@@ -569,7 +613,18 @@ pub fn wall_block(look: &Look) -> Pixmap {
     map.spans(&[(1, 3, 4), (2, 3, 3)], cap);
     map.spans(&[(5, 2, 4), (6, 2, 4), (7, 2, 4)], edge);
     map.put(3, 6, body);
-    map.spans(&[(1, 5, 5), (2, 5, 5), (3, 5, 5), (4, 5, 5), (5, 5, 5), (6, 5, 5), (7, 5, 5)], side);
+    map.spans(
+        &[
+            (1, 5, 5),
+            (2, 5, 5),
+            (3, 5, 5),
+            (4, 5, 5),
+            (5, 5, 5),
+            (6, 5, 5),
+            (7, 5, 5),
+        ],
+        side,
+    );
 
     for (x, y) in [(6, 4), (6, 5), (7, 5), (6, 6), (7, 6), (6, 7), (7, 7)] {
         map.paint(x, y, shadow);
@@ -588,9 +643,30 @@ pub fn flora(kind: Flora, cover: [u8; 3], variant: u8) -> Pixmap {
         Flora::Tree => {
             let mut map = Pixmap::blank(8, 9, 2, 5);
             let crown: [(u8, u8, u8); 6] = match variant {
-                0 => [(0, 3, 4), (1, 2, 5), (2, 1, 6), (3, 1, 6), (4, 1, 6), (5, 2, 5)],
-                1 => [(0, 2, 4), (1, 1, 5), (2, 1, 6), (3, 1, 6), (4, 2, 6), (5, 2, 5)],
-                _ => [(0, 3, 5), (1, 2, 6), (2, 1, 6), (3, 1, 6), (4, 1, 5), (5, 2, 5)],
+                0 => [
+                    (0, 3, 4),
+                    (1, 2, 5),
+                    (2, 1, 6),
+                    (3, 1, 6),
+                    (4, 1, 6),
+                    (5, 2, 5),
+                ],
+                1 => [
+                    (0, 2, 4),
+                    (1, 1, 5),
+                    (2, 1, 6),
+                    (3, 1, 6),
+                    (4, 2, 6),
+                    (5, 2, 5),
+                ],
+                _ => [
+                    (0, 3, 5),
+                    (1, 2, 6),
+                    (2, 1, 6),
+                    (3, 1, 6),
+                    (4, 1, 5),
+                    (5, 2, 5),
+                ],
             };
             map.spans(&crown, leaf);
 
@@ -608,7 +684,17 @@ pub fn flora(kind: Flora, cover: [u8; 3], variant: u8) -> Pixmap {
         }
         Flora::Bush => {
             let mut map = Pixmap::blank(8, 6, 2, 2);
-            map.spans(&[(0, 3, 4), (1, 2, 5), (2, 1, 6), (3, 1, 6), (4, 1, 6), (5, 2, 5)], leaf);
+            map.spans(
+                &[
+                    (0, 3, 4),
+                    (1, 2, 5),
+                    (2, 1, 6),
+                    (3, 1, 6),
+                    (4, 1, 6),
+                    (5, 2, 5),
+                ],
+                leaf,
+            );
 
             for (x, y) in map.cells() {
                 if y <= 1 && x <= 3 {
@@ -675,7 +761,16 @@ mod tests {
 
         assert_eq!(sprites(&look::SAND).len(), 3);
         assert_eq!(sprites(&look::SUMMIT).len(), 6);
-        assert_eq!(sprites(look::biome_pair(Overlay::Mushroom).unwrap().first().unwrap()).len(), 6);
+        assert_eq!(
+            sprites(
+                look::biome_pair(Overlay::Mushroom)
+                    .unwrap()
+                    .first()
+                    .unwrap()
+            )
+            .len(),
+            6
+        );
         assert_eq!(sprites(&look::CLOSE_OCEAN).len(), 1);
     }
 
@@ -683,7 +778,10 @@ mod tests {
     fn a_flat_tile_covers_its_cell_and_one_pixel_around_it_with_cut_corners() {
         let sprite = &sprites(&look::SOIL_LOW)[0];
 
-        assert_eq!((sprite.width, sprite.height, sprite.left, sprite.top), (8, 8, 2, 2));
+        assert_eq!(
+            (sprite.width, sprite.height, sprite.left, sprite.top),
+            (8, 8, 2, 2)
+        );
         assert_eq!(sprite.opaque_count(), 32);
 
         for y in 2..6 {
@@ -692,20 +790,38 @@ mod tests {
             }
         }
 
-        for (x, y) in [(1, 1), (6, 1), (1, 6), (6, 6), (0, 3), (7, 3), (3, 0), (3, 7)] {
+        for (x, y) in [
+            (1, 1),
+            (6, 1),
+            (1, 6),
+            (6, 6),
+            (0, 3),
+            (7, 3),
+            (3, 0),
+            (3, 7),
+        ] {
             assert!(!sprite.filled(x, y), "{x},{y}");
         }
     }
 
     #[test]
     fn the_lower_lip_of_a_flat_tile_is_darker_than_its_body() {
-        for look in [&look::SAND, &look::SOIL_HIGH, &look::CLOSE_OCEAN, &look::SHALLOW_WATERS] {
+        for look in [
+            &look::SAND,
+            &look::SOIL_HIGH,
+            &look::CLOSE_OCEAN,
+            &look::SHALLOW_WATERS,
+        ] {
             let sprite = &sprites(look)[0];
             let lip = sprite.at(3, 6);
             let body = look.color();
             let sum = |rgb: [u8; 4]| u32::from(rgb[0]) + u32::from(rgb[1]) + u32::from(rgb[2]);
 
-            assert!(sum(lip) < sum([body[0], body[1], body[2], 255]), "{}", look.id);
+            assert!(
+                sum(lip) < sum([body[0], body[1], body[2], 255]),
+                "{}",
+                look.id
+            );
         }
     }
 
@@ -739,6 +855,19 @@ mod tests {
         assert!(outline.filled(1, 5) && outline.filled(8, 5) && outline.filled(4, 8));
         assert!(!outline.filled(0, 5) && !outline.filled(4, 1));
         assert!(rim.filled(0, 5) && rim.filled(9, 5) && rim.filled(4, 9) && rim.filled(4, 1));
+    }
+
+    #[test]
+    fn every_rock_tile_covers_its_whole_cell() {
+        for look in [&look::HILLS, &look::MOUNTAINS, &look::SUMMIT] {
+            for sprite in sprites(look) {
+                for y in sprite.top..sprite.top + 4 {
+                    for x in 2..6 {
+                        assert!(sprite.filled(x, y), "{} {x},{y}", look.id);
+                    }
+                }
+            }
+        }
     }
 
     #[test]

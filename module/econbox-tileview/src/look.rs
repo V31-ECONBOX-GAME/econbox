@@ -117,7 +117,13 @@ pub static DEEP_OCEAN: Look = Look {
     height_min: 0,
     liquid: true,
     ocean: true,
-    ..look("deep_ocean", Paint::Ground(Ground::DeepOcean), 0, 1, Style::Water)
+    ..look(
+        "deep_ocean",
+        Paint::Ground(Ground::DeepOcean),
+        0,
+        1,
+        Style::Water,
+    )
 };
 
 pub static CLOSE_OCEAN: Look = Look {
@@ -125,7 +131,13 @@ pub static CLOSE_OCEAN: Look = Look {
     height_min: 30,
     liquid: true,
     ocean: true,
-    ..look("close_ocean", Paint::Ground(Ground::CloseOcean), 5, 1, Style::Water)
+    ..look(
+        "close_ocean",
+        Paint::Ground(Ground::CloseOcean),
+        5,
+        1,
+        Style::Water,
+    )
 };
 
 pub static SHALLOW_WATERS: Look = Look {
@@ -153,13 +165,25 @@ pub static SAND: Look = Look {
 pub static SOIL_LOW: Look = Look {
     height_min: 108,
     ground: true,
-    ..look("soil_low", Paint::Ground(Ground::SoilLow), 20, 3, Style::Soil)
+    ..look(
+        "soil_low",
+        Paint::Ground(Ground::SoilLow),
+        20,
+        3,
+        Style::Soil,
+    )
 };
 
 pub static SOIL_HIGH: Look = Look {
     height_min: 128,
     ground: true,
-    ..look("soil_high", Paint::Ground(Ground::SoilHigh), 21, 3, Style::Soil)
+    ..look(
+        "soil_high",
+        Paint::Ground(Ground::SoilHigh),
+        21,
+        3,
+        Style::Soil,
+    )
 };
 
 pub static LAVA2: Look = Look {
@@ -217,7 +241,13 @@ pub static SUMMIT: Look = Look {
     rocks: true,
     edge_mountains: true,
     edge_frame: Some(2),
-    ..look("summit", Paint::Ground(Ground::Summit), 96, 6, Style::Summit)
+    ..look(
+        "summit",
+        Paint::Ground(Ground::Summit),
+        96,
+        6,
+        Style::Summit,
+    )
 };
 
 pub static BORDER_PIT: Look = look("border_pit", Paint::Fixed(hex(0x4a4a4a)), 7, 1, Style::Pit);
@@ -271,12 +301,24 @@ const fn biome(
         Look {
             height_min: 108,
             ground: true,
-            ..look(ids[0], Paint::Overlay(overlay, false), z[0], variants[0], style)
+            ..look(
+                ids[0],
+                Paint::Overlay(overlay, false),
+                z[0],
+                variants[0],
+                style,
+            )
         },
         Look {
             height_min: 128,
             ground: true,
-            ..look(ids[1], Paint::Overlay(overlay, true), z[1], variants[1], style)
+            ..look(
+                ids[1],
+                Paint::Overlay(overlay, true),
+                z[1],
+                variants[1],
+                style,
+            )
         },
     ]
 }

@@ -282,8 +282,14 @@ pub fn over(top: [u8; 4], under: [u8; 4]) -> [u8; 4] {
     let a = f32::from(top[3]) / 255.0;
     let b = f32::from(under[3]) / 255.0 * (1.0 - a);
     let alpha = a + b;
-    let channel = |i: usize| ((f32::from(top[i]) * a + f32::from(under[i]) * b) / alpha).round() as u8;
-    [channel(0), channel(1), channel(2), (alpha * 255.0).round() as u8]
+    let channel =
+        |i: usize| ((f32::from(top[i]) * a + f32::from(under[i]) * b) / alpha).round() as u8;
+    [
+        channel(0),
+        channel(1),
+        channel(2),
+        (alpha * 255.0).round() as u8,
+    ]
 }
 
 fn things(tile: Tile, tx: u32, ty: u32) -> Vec<Thing> {
@@ -403,7 +409,10 @@ pub fn compose(map: &TileMap, area: Area) -> Canvas {
         match stamp.art {
             Art::Sheet(sprite) => canvas.stamp(sprite, stamp.tx, stamp.ty, stamp.ink),
             Art::Thing(thing) => {
-                let sprite = made.entry(thing).or_insert_with(|| render_thing(thing)).clone();
+                let sprite = made
+                    .entry(thing)
+                    .or_insert_with(|| render_thing(thing))
+                    .clone();
                 canvas.stamp(&sprite, stamp.tx, stamp.ty, stamp.ink);
             }
         }
@@ -454,7 +463,11 @@ mod tests {
 
     #[test]
     fn higher_ground_over_lower_ground_casts_a_ten_percent_shade() {
-        let steps = strip(&[bare(Ground::SoilHigh), bare(Ground::SoilLow), bare(Ground::Sand)]);
+        let steps = strip(&[
+            bare(Ground::SoilHigh),
+            bare(Ground::SoilLow),
+            bare(Ground::Sand),
+        ]);
         let meadow = strip(&[
             Tile::new(Ground::SoilHigh, Overlay::Grass),
             Tile::new(Ground::SoilLow, Overlay::Grass),
@@ -516,7 +529,11 @@ mod tests {
 
     #[test]
     fn the_minimap_pixel_is_the_tile_colour_under_its_edge() {
-        let map = strip(&[bare(Ground::SoilHigh), bare(Ground::SoilLow), bare(Ground::SoilLow)]);
+        let map = strip(&[
+            bare(Ground::SoilHigh),
+            bare(Ground::SoilLow),
+            bare(Ground::SoilLow),
+        ]);
         let [r, g, b] = Ground::SoilHigh.color();
 
         assert_eq!(minimap(&map, 0, 2), {
@@ -532,7 +549,11 @@ mod tests {
 
     #[test]
     fn mountains_take_the_edge_frame_under_a_different_tile() {
-        let map = strip(&[bare(Ground::SoilLow), bare(Ground::Mountains), bare(Ground::Mountains)]);
+        let map = strip(&[
+            bare(Ground::SoilLow),
+            bare(Ground::Mountains),
+            bare(Ground::Mountains),
+        ]);
 
         assert_eq!(variant(&map, 0, 1), 2);
         assert_eq!(variant(&map, 0, 2), pick(0, 2, 3));
@@ -615,9 +636,7 @@ mod tests {
         map.set(2, 0, Tile::new(Ground::SoilLow, Overlay::Grass));
         let canvas = compose(&map, Area::tiles(&map, 0, 0, 4, 1));
         let grass = Overlay::Grass.color(false).unwrap();
-        let near = |pixel: [u8; 4]| {
-            (0..3).all(|i| pixel[i].abs_diff(grass[i]) < 40)
-        };
+        let near = |pixel: [u8; 4]| (0..3).all(|i| pixel[i].abs_diff(grass[i]) < 40);
 
         assert!(near(canvas.at(7, 2)), "{:?}", canvas.at(7, 2));
         assert!(near(canvas.at(12, 2)), "{:?}", canvas.at(12, 2));
@@ -636,7 +655,11 @@ mod tests {
     fn a_part_of_the_canvas_matches_the_whole() {
         let mut map = sea_with_island();
         map.set(5, 5, bare(Ground::Mountains));
-        map.set(4, 3, Tile::new(Ground::SoilLow, Overlay::Grass).with_flora(Some(Flora::Tree)));
+        map.set(
+            4,
+            3,
+            Tile::new(Ground::SoilLow, Overlay::Grass).with_flora(Some(Flora::Tree)),
+        );
         let whole = compose(&map, Area::tiles(&map, 0, 0, 8, 8));
         let part = compose(&map, Area::tiles(&map, 2, 2, 4, 4));
 

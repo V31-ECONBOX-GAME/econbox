@@ -120,8 +120,10 @@ mod tests {
 
     #[test]
     fn the_map_layer_sits_above_the_tiles_and_both_below_the_creatures() {
-        assert!(MAP_LAYER > TILES_LAYER);
-        assert!(FLASH_LAYER > MAP_LAYER);
-        assert!(FLASH_LAYER < 0.5);
+        const {
+            assert!(MAP_LAYER > TILES_LAYER);
+            assert!(FLASH_LAYER > MAP_LAYER);
+            assert!(FLASH_LAYER < 0.5);
+        }
     }
 }
