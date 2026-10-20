@@ -205,7 +205,7 @@ pub const SETTINGS: [Setting; 33] = [
         Audio,
         (0, 100, 100),
         G(Glyph::Bell),
-        Some("world sounds"),
+        None,
     ),
     slider(
         "volume_ui",

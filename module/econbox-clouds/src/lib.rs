@@ -1,25 +1,25 @@
 //! WorldBox's drifting clouds: spawned by the world age, carried east, faded by zoom, raining what they carry.
 
-pub mod age;
 pub mod art;
 pub mod cloud;
 pub mod dice;
 pub mod kind;
 pub mod rain;
 
-pub use age::{AGES, Age};
 pub use art::{PUFFS, Puff};
 pub use cloud::{Cloud, Deeds};
-pub use kind::{CloudKind, Drop, KINDS};
+pub use econbox_age::{AGES, Age, WorldAge};
+pub use kind::{CloudKind, KINDS};
 
 use bevy::prelude::*;
 use cloud::{SHADOW_OFFSET, over_tile, spawn_spot, spot_tile};
 use dice::Dice;
 use econbox_brush::{Brush, ForcedBrush, Power, Tool};
 use econbox_camera::{PointerOverUi, TILE_SIZE, WorldBounds, WorldCamera};
-use econbox_clock::WorldClock;
+use econbox_clock::{Frames, WorldClock};
 use econbox_creature::Strike;
 use econbox_cursor::Hovered;
+use econbox_drops::SpawnDrop;
 use econbox_tile::Ground;
 use econbox_tilemap::{Painted, TileMap, TilePos};
 use std::collections::HashSet;
@@ -29,16 +29,11 @@ pub const CLOUD_LAYER: f32 = 4.5;
 pub const STACK: f32 = 0.0002;
 pub const STACKED: u64 = 1000;
 pub const LIMIT: usize = 200;
-pub const FRAME: f32 = 1.0 / 60.0;
-pub const STEP: f32 = 0.02;
-pub const CATCH_UP: u32 = 4;
 pub const SHADOW_SQUASH: f32 = 0.5;
 pub const SHADOW_SHARE: f32 = 0.5;
 pub const SHADOW_COLOR: [u8; 3] = [62, 66, 82];
 pub const SPONGE_REACH: f32 = 10.0;
-
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct WorldAge(pub Age);
+pub const DROP_HEIGHT: f32 = 10.0;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CloudLaws {
@@ -64,7 +59,6 @@ impl CloudLaws {
 #[derive(Resource, Debug, Clone)]
 pub struct Sky {
     pub timer: f32,
-    pub lag: f32,
     pub dice: Dice,
     pub serial: u64,
     pub size: Option<Vec2>,
@@ -74,7 +68,6 @@ impl Default for Sky {
     fn default() -> Self {
         Self {
             timer: Age::default().cloud_interval(),
-            lag: 0.0,
             dice: Dice::new(0x00c1_00d5),
             serial: 0,
             size: None,
@@ -98,7 +91,9 @@ impl Sky {
 
     pub fn choose(&mut self, age: Age, laws: CloudLaws) -> Option<CloudKind> {
         let roll = self.dice.roll();
-        age.pick(roll).filter(|kind| laws.allow(*kind))
+        age.pick_cloud(roll)
+            .and_then(CloudKind::from_id)
+            .filter(|kind| laws.allow(*kind))
     }
 
     pub fn make(&mut self, kind: CloudKind, at: Option<Vec2>, height: f32) -> Cloud {
@@ -110,18 +105,6 @@ impl Sky {
         self.serial += 1;
 
         Cloud::new(kind, puff, at, speed, flip, self.serial)
-    }
-
-    pub fn steps(&mut self, seconds: f32) -> u32 {
-        self.lag += seconds;
-        let due = (self.lag / FRAME) as u32;
-        self.lag -= due as f32 * FRAME;
-
-        if due > CATCH_UP {
-            self.lag = 0.0;
-        }
-
-        due.min(CATCH_UP)
     }
 }
 
@@ -152,10 +135,13 @@ pub struct CloudsPlugin;
 impl Plugin for CloudsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WorldAge>()
+            .init_resource::<WorldClock>()
+            .init_resource::<Frames>()
             .init_resource::<CloudLaws>()
             .init_resource::<Sky>()
             .init_resource::<CloudArt>()
             .add_message::<SpawnCloud>()
+            .add_message::<SpawnDrop>()
             .add_message::<Painted>()
             .add_message::<Strike>()
             .add_systems(Startup, draw)
@@ -206,8 +192,8 @@ pub fn ortho(projection: &Projection) -> Option<f32> {
 
 fn weather(
     mut commands: Commands,
-    time: Res<Time>,
-    clock: Option<Res<WorldClock>>,
+    frames: Res<Frames>,
+    clock: Res<WorldClock>,
     bounds: Res<WorldBounds>,
     age: Res<WorldAge>,
     laws: Res<CloudLaws>,
@@ -219,14 +205,13 @@ fn weather(
     mut clouds: Query<(Entity, &mut Cloud)>,
     mut painted: MessageWriter<Painted>,
     mut strikes: MessageWriter<Strike>,
+    mut drops: MessageWriter<SpawnDrop>,
 ) {
     let width = bounds.width / TILE_SIZE;
     let height = bounds.height / TILE_SIZE;
     let ortho = camera.and_then(|projection| ortho(&projection));
-    let (multiplier, running) = clock.map_or((1.0, true), |clock| {
-        (clock.speed().multiplier, clock.rate() > 0.0)
-    });
-    let dt = STEP * multiplier;
+    let running = clock.running();
+    let dt = clock.step();
     let mut gone = HashSet::new();
     let mut cells = Vec::new();
 
@@ -236,7 +221,7 @@ fn weather(
         spawn(&mut commands, &art, cloud);
     }
 
-    for _ in 0..sky.steps(time.delta_secs()) {
+    for _ in 0..frames.due {
         for (entity, mut cloud) in &mut clouds {
             if gone.contains(&entity) {
                 continue;
@@ -256,9 +241,12 @@ fn weather(
 
             for _ in 0..deeds.drops {
                 let spot = cloud.drop_spot(&mut sky.dice);
-                if let Some(pos) = spot_tile(spot, map.width, map.height) {
-                    let fall = rain::land(cloud.kind.drop(), map, pos, &mut sky.dice);
-                    pour(map, fall, &mut cells, &mut strikes);
+                if spot_tile(spot, map.width, map.height).is_some() {
+                    drops.write(SpawnDrop {
+                        kind: cloud.kind.drop(),
+                        spot,
+                        height: Some(DROP_HEIGHT),
+                    });
                 }
             }
 
@@ -479,6 +467,7 @@ fn place(
 mod tests {
     use super::*;
     use bevy::time::TimeUpdateStrategy;
+    use econbox_clock::{ClockPlugin, FRAME, STEP};
     use econbox_tile::Tile;
     use std::time::Duration;
 
@@ -490,8 +479,7 @@ mod tests {
             )))
             .insert_resource(WorldBounds::from_tiles(tiles, tiles))
             .insert_resource(TileMap::filled(tiles, tiles, Tile::bare(Ground::Sand)))
-            .init_resource::<WorldClock>()
-            .add_plugins(CloudsPlugin);
+            .add_plugins((ClockPlugin, econbox_drops::DropsPlugin, CloudsPlugin));
         app
     }
 
@@ -516,19 +504,6 @@ mod tests {
         let sky = clouds(&mut app);
         assert_eq!(sky.len(), 1);
         assert_eq!(sky[0].kind, CloudKind::Normal);
-    }
-
-    #[test]
-    fn worldbox_time_runs_a_fifth_faster_than_the_wall_clock() {
-        let mut sky = Sky::default();
-        let mut stepped = 0;
-
-        for _ in 0..600 {
-            stepped += sky.steps(FRAME);
-        }
-
-        assert_eq!(stepped, 600);
-        assert!((stepped as f32 * STEP - 12.0).abs() < 1e-3);
     }
 
     #[test]

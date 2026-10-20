@@ -5,12 +5,14 @@ pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
 use config::{logs, settings, windows};
+use econbox_age::AgePlugin;
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
 use econbox_clouds::CloudsPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
+use econbox_drops::DropsPlugin;
 use econbox_flora::FloraPlugin;
 use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
@@ -51,11 +53,13 @@ pub fn app_with(source: &Config) -> App {
         .add_plugins((
             CameraPlugin,
             ClockPlugin,
+            AgePlugin,
             TileViewPlugin,
             CursorPlugin,
             CreaturePlugin,
             BrushPlugin,
             FloraPlugin,
+            DropsPlugin,
             CloudsPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin))

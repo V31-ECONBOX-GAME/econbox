@@ -6,11 +6,13 @@ publish.workspace = true
 
 [dependencies]
 bevy = { workspace = true, features = ["2d"] }
+econbox-age = { workspace = true }
 econbox-brush = { workspace = true }
 econbox-camera = { workspace = true }
 econbox-clock = { workspace = true }
 econbox-creature = { workspace = true }
 econbox-cursor = { workspace = true }
+econbox-drops = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 

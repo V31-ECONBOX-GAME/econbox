@@ -11,7 +11,7 @@ use econbox_creature::{CreaturePlugin, centre_of};
 use econbox_cursor::{CursorPlugin, Hovered};
 use econbox_tile::{Ground, Overlay, Tile};
 use econbox_tilemap::{TileMap, TilePos};
-use econbox_toolbar::{Chosen, Controls, ToolbarPlugin, find};
+use econbox_toolbar::{Chosen, Controls, OpenWindow, Panel, ToolbarPlugin, find};
 
 const SIDE: u32 = 48;
 
@@ -161,4 +161,41 @@ fn map_untouched(app: &App) -> Option<Ground> {
         .iter()
         .all(|ground| *ground == grounds[0])
         .then_some(grounds[0])
+}
+
+fn open(app: &mut App, panel: Panel) {
+    app.world_mut().resource_mut::<OpenWindow>().0 = Some(panel);
+    app.update();
+}
+
+#[test]
+fn opening_a_window_puts_a_cloud_power_away_like_worldbox() {
+    let mut app = app();
+    press(&mut app, "cloud_rain");
+    open(&mut app, Panel::Settings);
+
+    assert_eq!(app.world().resource::<Chosen>().0, None);
+    assert_eq!(app.world().resource::<Brush>().tool, Tool::Inspect);
+
+    app.world_mut().resource_mut::<OpenWindow>().0 = None;
+    app.update();
+    click(&mut app, TilePos::new(8, 8));
+    assert!(sky(&mut app).is_empty());
+}
+
+#[test]
+fn the_brush_window_and_kept_powers_survive_a_window() {
+    let mut app = app();
+    press(&mut app, "cloud_ash");
+    open(&mut app, Panel::Brushes);
+    assert_eq!(app.world().resource::<Chosen>().0, Some("cloud_ash"));
+
+    open(&mut app, Panel::Other);
+    assert_eq!(app.world().resource::<Chosen>().0, None);
+
+    app.world_mut().resource_mut::<OpenWindow>().0 = None;
+    app.update();
+    press(&mut app, "inspect");
+    open(&mut app, Panel::Languages);
+    assert_eq!(app.world().resource::<Chosen>().0, Some("inspect"));
 }

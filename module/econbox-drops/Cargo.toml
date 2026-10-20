@@ -1,0 +1,18 @@
+[package]
+name = "econbox-drops"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy = { workspace = true, features = ["2d"] }
+econbox-brush = { workspace = true }
+econbox-camera = { workspace = true }
+econbox-clock = { workspace = true }
+econbox-creature = { workspace = true }
+econbox-noise = { workspace = true }
+econbox-tile = { workspace = true }
+econbox-tilemap = { workspace = true }
+
+[lints]
+workspace = true

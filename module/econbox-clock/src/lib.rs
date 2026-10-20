@@ -60,6 +60,9 @@ pub const SPEEDS: [Speed; 9] = [
 pub const NORMAL: usize = 1;
 pub const ON_PANEL: usize = 6;
 pub const TICK: f32 = 0.2;
+pub const FRAME: f32 = 1.0 / 60.0;
+pub const STEP: f32 = 0.02;
+pub const CATCH_UP: u32 = 4;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct WorldClock {
@@ -125,6 +128,14 @@ impl WorldClock {
         self.ticks = (self.elapsed / TICK) as u64;
     }
 
+    pub fn step(&self) -> f32 {
+        STEP * self.speed().multiplier
+    }
+
+    pub fn running(&self) -> bool {
+        self.rate() > 0.0
+    }
+
     pub fn label(&self) -> String {
         if self.paused {
             "paused".to_string()
@@ -134,13 +145,40 @@ impl WorldClock {
     }
 }
 
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Frames {
+    pub lag: f32,
+    pub due: u32,
+}
+
+impl Frames {
+    pub fn advance(&mut self, seconds: f32) -> u32 {
+        self.lag += seconds;
+        let due = (self.lag / FRAME) as u32;
+        self.lag -= due as f32 * FRAME;
+
+        if due > CATCH_UP {
+            self.lag = 0.0;
+        }
+
+        self.due = due.min(CATCH_UP);
+        self.due
+    }
+}
+
 pub struct ClockPlugin;
 
 impl Plugin for ClockPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WorldClock>()
+            .init_resource::<Frames>()
+            .add_systems(PreUpdate, frame)
             .add_systems(Update, advance);
     }
+}
+
+fn frame(time: Res<Time>, mut frames: ResMut<Frames>) {
+    frames.advance(time.delta_secs());
 }
 
 fn advance(time: Res<Time>, mut clock: ResMut<WorldClock>) {
@@ -279,6 +317,34 @@ mod tests {
         }
 
         assert!((clock.elapsed - 1.0).abs() < 1e-3, "{}", clock.elapsed);
+    }
+
+    #[test]
+    fn worldbox_frames_come_sixty_a_second_and_each_moves_the_world_by_a_fiftieth() {
+        let mut frames = Frames::default();
+        let stepped: u32 = (0..600).map(|_| frames.advance(FRAME)).sum();
+        let clock = WorldClock::default();
+
+        assert_eq!(stepped, 600);
+        assert!((stepped as f32 * clock.step() - 12.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn a_stalled_frame_catches_up_only_a_few_worldbox_frames() {
+        let mut frames = Frames::default();
+
+        assert_eq!(frames.advance(2.0), CATCH_UP);
+        assert_eq!(frames.lag, 0.0);
+    }
+
+    #[test]
+    fn a_world_frame_scales_with_the_speed_and_keeps_running_while_paused() {
+        let mut clock = WorldClock::default();
+        clock.select("x5");
+        clock.toggle();
+
+        assert!((clock.step() - 0.1).abs() < 1e-6);
+        assert!(!clock.running());
     }
 
     #[test]
