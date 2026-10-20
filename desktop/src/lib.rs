@@ -12,7 +12,7 @@ use econbox_clouds::CloudsPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_flora::FloraPlugin;
-use econbox_tileview::TileViewPlugin;
+use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
 use prelude::*;
@@ -58,7 +58,8 @@ pub fn app_with(source: &Config) -> App {
             FloraPlugin,
             CloudsPlugin,
         ))
-        .add_plugins((HudPlugin, ToolbarPlugin));
+        .add_plugins((HudPlugin, ToolbarPlugin))
+        .add_systems(Update, (screen_options, power_selected));
 
     #[cfg(feature = "dev")]
     {
@@ -103,6 +104,24 @@ fn snapshot(
     commands
         .spawn(Screenshot::primary_window())
         .observe(save_to_disk(path));
+}
+
+fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<ScreenOptions>) {
+    if !options.is_changed() {
+        return;
+    }
+
+    let wanted = ScreenOptions {
+        bloom: options.on("bloom"),
+        vignette: options.on("vignette"),
+        transition: options.on("minimap_transition_animation"),
+        shadows: options.on("shadows"),
+    };
+    screen.set_if_neq(wanted);
+}
+
+fn power_selected(brush: Res<Brush>, mut selected: ResMut<PowerSelected>) {
+    selected.set_if_neq(PowerSelected(brush.tool != Tool::Inspect));
 }
 
 pub fn headless_app() -> App {

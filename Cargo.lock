@@ -2631,6 +2631,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "econbox-camera",
+ "econbox-clock",
  "econbox-tile",
  "econbox-tilemap",
  "econbox-worldgen",
