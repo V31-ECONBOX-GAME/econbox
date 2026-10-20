@@ -2598,9 +2598,6 @@ dependencies = [
 [[package]]
 name = "econbox-field"
 version = "0.2.0"
-dependencies = [
- "econbox-noise",
-]
 
 [[package]]
 name = "econbox-flora"
@@ -2660,6 +2657,7 @@ name = "econbox-worldgen"
 version = "0.2.0"
 dependencies = [
  "econbox-field",
+ "econbox-noise",
  "econbox-tile",
  "econbox-tilemap",
 ]

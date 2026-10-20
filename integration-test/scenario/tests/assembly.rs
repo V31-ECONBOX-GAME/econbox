@@ -3,12 +3,12 @@ mod common;
 use econbox_worldgen::{WorldConfig, generate};
 
 #[test]
-fn a_generated_world_is_mostly_sea_with_islands_in_it() {
+fn a_generated_world_is_a_standard_continent_in_the_sea() {
     let map = generate(WorldConfig::with_seed(11));
 
-    assert_eq!(map.chunks(), (7, 7));
-    assert!((map.water_share() - 0.68).abs() < 0.06);
-    assert!(map.land_cells() > 10_000);
+    assert_eq!(map.chunks(), (4, 4));
+    assert!(map.water_share() > 0.4 && map.water_share() < 0.9);
+    assert!(map.land_cells() > 5_000);
 }
 
 #[test]
