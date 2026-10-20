@@ -68,7 +68,7 @@ impl Plugin for TileViewPlugin {
         .init_resource::<Drawn>()
         .add_message::<Regenerate>()
         .add_message::<Painted>()
-        .add_systems(Startup, (spawn, view::spawn_layers))
+        .add_systems(Startup, (spawn, view::spawn_layers, border::spawn))
         .add_systems(
             Update,
             (
@@ -81,6 +81,8 @@ impl Plugin for TileViewPlugin {
                 objects_view::mark,
                 objects_view::tick,
                 objects_view::draw,
+                view::darken,
+                border::animate,
             )
                 .chain(),
         );
