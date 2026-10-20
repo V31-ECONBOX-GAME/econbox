@@ -20,6 +20,7 @@ econbox-clock = { workspace = true }
 econbox-clouds = { workspace = true }
 econbox-creature = { workspace = true }
 econbox-cursor = { workspace = true }
+econbox-drops = { workspace = true }
 econbox-flora = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }

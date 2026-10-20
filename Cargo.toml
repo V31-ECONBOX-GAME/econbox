@@ -22,6 +22,7 @@ econbox-clock = { path = "module/econbox-clock" }
 econbox-clouds = { path = "module/econbox-clouds" }
 econbox-creature = { path = "module/econbox-creature" }
 econbox-cursor = { path = "module/econbox-cursor" }
+econbox-drops = { path = "module/econbox-drops" }
 econbox-field = { path = "module/econbox-field" }
 econbox-flora = { path = "module/econbox-flora" }
 econbox-noise = { path = "module/econbox-noise" }

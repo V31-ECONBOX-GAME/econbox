@@ -1,4 +1,5 @@
 use crate::art::Puff;
+use econbox_drops::DropKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CloudKind {
@@ -26,19 +27,6 @@ pub const KINDS: [CloudKind; 10] = [
     CloudKind::Magic,
     CloudKind::Normal,
 ];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Drop {
-    Rain,
-    Rage,
-    Acid,
-    Lava,
-    Fire,
-    Snow,
-    Ash,
-    MagicRain,
-    LifeSeed,
-}
 
 const SMALL: [Puff; 2] = [Puff::Small, Puff::Wisp];
 const BIG: [Puff; 3] = [Puff::Broad, Puff::Tall, Puff::Grand];
@@ -115,17 +103,17 @@ impl CloudKind {
         }
     }
 
-    pub fn drop(self) -> Drop {
+    pub fn drop(self) -> DropKind {
         match self {
-            Self::Rain | Self::Lightning => Drop::Rain,
-            Self::Rage => Drop::Rage,
-            Self::Acid => Drop::Acid,
-            Self::Lava => Drop::Lava,
-            Self::Fire => Drop::Fire,
-            Self::Snow => Drop::Snow,
-            Self::Ash => Drop::Ash,
-            Self::Magic => Drop::MagicRain,
-            Self::Normal => Drop::LifeSeed,
+            Self::Rain | Self::Lightning => DropKind::Rain,
+            Self::Rage => DropKind::Rage,
+            Self::Acid => DropKind::Acid,
+            Self::Lava => DropKind::Lava,
+            Self::Fire => DropKind::Fire,
+            Self::Snow => DropKind::Snow,
+            Self::Ash => DropKind::Ash,
+            Self::Magic => DropKind::MagicRain,
+            Self::Normal => DropKind::LifeSeed,
         }
     }
 
@@ -172,7 +160,7 @@ mod tests {
         assert_eq!(plain.speed(), (2.0, 6.0));
         assert_eq!(plain.puffs().len(), 5);
         assert!(plain.normal() && !plain.disaster());
-        assert_eq!(plain.drop(), Drop::LifeSeed);
+        assert_eq!(plain.drop(), DropKind::LifeSeed);
     }
 
     #[test]

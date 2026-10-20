@@ -12,6 +12,7 @@ use econbox_clock::ClockPlugin;
 use econbox_clouds::CloudsPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
+use econbox_drops::DropsPlugin;
 use econbox_flora::FloraPlugin;
 use econbox_tileview::TileViewPlugin;
 use econbox_toolbar::{BarSize, ToolbarPlugin};
@@ -58,6 +59,7 @@ pub fn app_with(source: &Config) -> App {
             CreaturePlugin,
             BrushPlugin,
             FloraPlugin,
+            DropsPlugin,
             CloudsPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin));

@@ -9,7 +9,7 @@ pub mod rain;
 pub use art::{PUFFS, Puff};
 pub use cloud::{Cloud, Deeds};
 pub use econbox_age::{AGES, Age, WorldAge};
-pub use kind::{CloudKind, Drop, KINDS};
+pub use kind::{CloudKind, KINDS};
 
 use bevy::prelude::*;
 use cloud::{SHADOW_OFFSET, over_tile, spawn_spot, spot_tile};
@@ -19,6 +19,7 @@ use econbox_camera::{PointerOverUi, TILE_SIZE, WorldBounds, WorldCamera};
 use econbox_clock::{Frames, WorldClock};
 use econbox_creature::Strike;
 use econbox_cursor::Hovered;
+use econbox_drops::SpawnDrop;
 use econbox_tile::Ground;
 use econbox_tilemap::{Painted, TileMap, TilePos};
 use std::collections::HashSet;
@@ -32,6 +33,7 @@ pub const SHADOW_SQUASH: f32 = 0.5;
 pub const SHADOW_SHARE: f32 = 0.5;
 pub const SHADOW_COLOR: [u8; 3] = [62, 66, 82];
 pub const SPONGE_REACH: f32 = 10.0;
+pub const DROP_HEIGHT: f32 = 10.0;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CloudLaws {
@@ -139,6 +141,7 @@ impl Plugin for CloudsPlugin {
             .init_resource::<Sky>()
             .init_resource::<CloudArt>()
             .add_message::<SpawnCloud>()
+            .add_message::<SpawnDrop>()
             .add_message::<Painted>()
             .add_message::<Strike>()
             .add_systems(Startup, draw)
@@ -202,6 +205,7 @@ fn weather(
     mut clouds: Query<(Entity, &mut Cloud)>,
     mut painted: MessageWriter<Painted>,
     mut strikes: MessageWriter<Strike>,
+    mut drops: MessageWriter<SpawnDrop>,
 ) {
     let width = bounds.width / TILE_SIZE;
     let height = bounds.height / TILE_SIZE;
@@ -237,9 +241,12 @@ fn weather(
 
             for _ in 0..deeds.drops {
                 let spot = cloud.drop_spot(&mut sky.dice);
-                if let Some(pos) = spot_tile(spot, map.width, map.height) {
-                    let fall = rain::land(cloud.kind.drop(), map, pos, &mut sky.dice);
-                    pour(map, fall, &mut cells, &mut strikes);
+                if spot_tile(spot, map.width, map.height).is_some() {
+                    drops.write(SpawnDrop {
+                        kind: cloud.kind.drop(),
+                        spot,
+                        height: Some(DROP_HEIGHT),
+                    });
                 }
             }
 
@@ -472,7 +479,7 @@ mod tests {
             )))
             .insert_resource(WorldBounds::from_tiles(tiles, tiles))
             .insert_resource(TileMap::filled(tiles, tiles, Tile::bare(Ground::Sand)))
-            .add_plugins((ClockPlugin, CloudsPlugin));
+            .add_plugins((ClockPlugin, econbox_drops::DropsPlugin, CloudsPlugin));
         app
     }
 
