@@ -33,6 +33,11 @@ impl Painted {
     }
 }
 
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Ignite {
+    pub pos: TilePos,
+}
+
 #[derive(Resource, Debug, Clone, PartialEq)]
 pub struct TileMap {
     pub width: u32,
