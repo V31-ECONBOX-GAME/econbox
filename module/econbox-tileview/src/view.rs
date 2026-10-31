@@ -134,7 +134,13 @@ pub fn block_area(map: &TileMap, x: u32, y: u32) -> Area {
     Area::tiles(map, x * BLOCK, y * BLOCK, BLOCK, BLOCK).with_margin(map)
 }
 
-pub fn write(target: &mut Image, origin: Area, canvas: &Canvas, channels: usize) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Plane {
+    Color,
+    Marks,
+}
+
+pub fn write(target: &mut Image, origin: Area, canvas: &Canvas, plane: Plane) {
     let width = target.width() as usize;
     let Some(data) = target.data.as_mut() else {
         return;
@@ -145,16 +151,15 @@ pub fn write(target: &mut Image, origin: Area, canvas: &Canvas, channels: usize)
 
     for y in 0..canvas.area.height as usize {
         let from = y * row;
-        let to = ((dy + y) * width + dx) * channels;
+        let to = ((dy + y) * width + dx) * 4;
 
-        if channels == 4 {
+        if plane == Plane::Color {
             for (i, pixel) in canvas.color[from..from + row].iter().enumerate() {
                 data[to + i * 4..to + i * 4 + 4].copy_from_slice(pixel);
             }
         } else {
             for i in 0..row {
-                data[to + i * 2] = canvas.rim[from + i];
-                data[to + i * 2 + 1] = canvas.shade[from + i];
+                data[to + i * 4..to + i * 4 + 4].copy_from_slice(&canvas.mark(from + i));
             }
         }
     }
@@ -164,17 +169,7 @@ pub fn chunk_images(canvas: &Canvas) -> (Image, Image) {
     let Area { width, height, .. } = canvas.area;
     (
         image(width, height, TextureFormat::Rgba8Unorm, canvas.rgba()),
-        image(
-            width,
-            height,
-            TextureFormat::Rg8Unorm,
-            canvas
-                .rim
-                .iter()
-                .zip(&canvas.shade)
-                .flat_map(|(&rim, &shade)| [rim, shade])
-                .collect(),
-        ),
+        image(width, height, TextureFormat::Rgba8Unorm, canvas.marks()),
     )
 }
 
@@ -372,16 +367,16 @@ pub fn switch(
     }
 }
 
-fn rim_color(runup: &Runup) -> Vec4 {
-    let [r, g, b] = look::BORDER_WATER_RUNUP.color();
-    let tint = look::RIM_TINT;
-    let channel = |c: u8, t: u8| f32::from(c) * f32::from(t) / (255.0 * 255.0);
-    Vec4::new(
-        channel(r, tint[0]),
-        channel(g, tint[1]),
-        channel(b, tint[2]),
-        runup.alpha,
-    )
+pub fn rim_color(runup: &Runup, night: crate::quality::Night) -> Vec4 {
+    let [r, g, b] = look::BORDER_WATER_RUNUP
+        .color()
+        .map(|c| f32::from(c) / 255.0);
+    let [tr, tg, tb] = crate::quality::blend(
+        crate::quality::NIGHT,
+        look::RIM_TINT.map(|c| f32::from(c) / 255.0),
+        night.0,
+    );
+    Vec4::new(r * tr, g * tg, b * tb, runup.alpha)
 }
 
 fn ocean_color(clear: &ClearColor) -> Vec4 {
@@ -423,7 +418,7 @@ pub fn draw(
     let ocean = clear.map(|clear| ocean_color(&clear)).unwrap_or(Vec4::ONE);
     let [tr, tg, tb] = night.tint();
     let tint = Vec4::new(tr, tg, tb, 1.0);
-    let rim = rim_color(&runup);
+    let rim = rim_color(&runup, *night);
     let shadow = Vec4::new(
         if options.shadows && mode.shadows_on() {
             mode.shadow_alpha()
@@ -533,10 +528,10 @@ pub fn draw(
             let origin = chunk_area(&map, key.0, key.1);
 
             if let Some(mut image) = images.get_mut(&chunk.tiles) {
-                write(&mut image, origin, &canvas, 4);
+                write(&mut image, origin, &canvas, Plane::Color);
             }
             if let Some(mut image) = images.get_mut(&chunk.runup) {
-                write(&mut image, origin, &canvas, 2);
+                write(&mut image, origin, &canvas, Plane::Marks);
             }
         }
     }
@@ -695,7 +690,7 @@ mod tests {
 
         map.set(20, 12, Tile::bare(Ground::Mountains));
         let block = compose::compose(&map, block_area(&map, 2, 1));
-        write(&mut tiles, origin, &block, 4);
+        write(&mut tiles, origin, &block, Plane::Color);
         let after = tiles.data.expect("pixels");
         let whole = compose::compose(&map, origin).rgba();
 

@@ -5,7 +5,7 @@ pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
 use config::{logs, settings, windows};
-use econbox_age::AgePlugin;
+use econbox_age::{AgePlugin, AgeSettings};
 use econbox_brush::BrushPlugin;
 use econbox_camera::CameraPlugin;
 use econbox_clock::ClockPlugin;
@@ -63,7 +63,7 @@ pub fn app_with(source: &Config) -> App {
             CloudsPlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin))
-        .add_systems(Update, (screen_options, power_selected));
+        .add_systems(Update, (screen_options, age_options, power_selected));
 
     #[cfg(feature = "dev")]
     {
@@ -120,8 +120,21 @@ fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<Scr
         vignette: options.on("vignette"),
         transition: options.on("minimap_transition_animation"),
         shadows: options.on("shadows"),
+        tree_wind: options.on("tree_wind"),
     };
     screen.set_if_neq(wanted);
+}
+
+fn age_options(options: Res<econbox_toolbar::Options>, mut ages: ResMut<AgeSettings>) {
+    if !options.is_changed() {
+        return;
+    }
+
+    ages.set_if_neq(AgeSettings {
+        overlay_effect: options.int("age_overlay_effect"),
+        night_effect: options.int("age_night_effect"),
+        night_lights: options.on("night_lights"),
+    });
 }
 
 fn power_selected(brush: Res<Brush>, mut selected: ResMut<PowerSelected>) {

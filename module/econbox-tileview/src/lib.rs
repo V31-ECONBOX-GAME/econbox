@@ -1,5 +1,6 @@
 //! Draws the tile map the way WorldBox does: sprite tiles up close, one pixel per tile from afar.
 
+pub mod ambience;
 pub mod art;
 pub mod border;
 pub mod compose;
@@ -15,10 +16,12 @@ pub mod view;
 use bevy::asset::embedded_asset;
 use bevy::prelude::*;
 use bevy::sprite_render::Material2dPlugin;
+use econbox_age::Ages;
 use econbox_camera::WorldBounds;
 use econbox_tilemap::Painted;
 use econbox_worldgen::{WorldConfig, generate};
 
+pub use ambience::{Ambience, AmbiencePlugin, LightBlob, LightBlobs};
 pub use border::PowerSelected;
 pub use quality::{MapMode, Night, Runup};
 pub use sleek::{ScreenEffects, ScreenOptions, SleekPlugin};
@@ -56,6 +59,7 @@ impl Plugin for TileViewPlugin {
             Material2dPlugin::<ChunkMaterial>::default(),
             Material2dPlugin::<objects_view::ObjectMaterial>::default(),
             SleekPlugin,
+            AmbiencePlugin,
         ))
         .init_resource::<objects_view::ObjectClock>()
         .init_resource::<quality::Night>()
@@ -73,6 +77,7 @@ impl Plugin for TileViewPlugin {
             Update,
             (
                 rebuild,
+                ambience::night,
                 view::refresh,
                 view::repaint,
                 view::switch,
@@ -97,12 +102,16 @@ fn spawn(
     mut bounds: ResMut<WorldBounds>,
     settings: Res<WorldSettings>,
     seed: Res<WorldSeed>,
+    ages: Option<ResMut<Ages>>,
 ) {
     let map = generate(WorldConfig {
         seed: seed.0,
         ..settings.0
     });
     *bounds = WorldBounds::from_tiles(map.width, map.height);
+    if let Some(mut ages) = ages {
+        ages.restart(seed.0);
+    }
 
     commands.insert_resource(map);
 }
@@ -113,6 +122,7 @@ fn rebuild(
     mut bounds: ResMut<WorldBounds>,
     mut seed: ResMut<WorldSeed>,
     settings: Res<WorldSettings>,
+    ages: Option<ResMut<Ages>>,
 ) {
     let Some(request) = asked.read().last().copied() else {
         return;
@@ -125,6 +135,9 @@ fn rebuild(
     });
 
     *bounds = WorldBounds::from_tiles(map.width, map.height);
+    if let Some(mut ages) = ages {
+        ages.restart(request.seed);
+    }
 
     commands.insert_resource(map);
 }

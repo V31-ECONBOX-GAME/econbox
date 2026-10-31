@@ -225,11 +225,13 @@ pub struct Canvas {
     pub color: Vec<[u8; 4]>,
     pub rim: Vec<u8>,
     pub shade: Vec<u8>,
+    pub lit: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Ink {
     Tile,
+    Lit,
     Rim,
 }
 
@@ -249,6 +251,7 @@ impl Canvas {
             color: vec![art::CLEAR; size],
             rim: vec![0; size],
             shade: vec![0; size],
+            lit: vec![0; size],
         }
     }
 
@@ -303,9 +306,10 @@ impl Canvas {
 
                 let at = self.index(x, y);
                 match ink {
-                    Ink::Tile => {
+                    Ink::Tile | Ink::Lit => {
                         self.color[at] = pixel;
                         self.rim[at] = 0;
+                        self.lit[at] = if ink == Ink::Lit { 255 } else { 0 };
                     }
                     Ink::Rim => self.rim[at] = self.rim[at].saturating_add(1),
                 }
@@ -315,6 +319,18 @@ impl Canvas {
 
     pub fn rgba(&self) -> Vec<u8> {
         self.color.iter().flatten().copied().collect()
+    }
+
+    pub fn lit_at(&self, x: u32, y: u32) -> bool {
+        self.lit[self.index(x as i32, y as i32)] > 0
+    }
+
+    pub fn mark(&self, at: usize) -> [u8; 4] {
+        [self.rim[at], self.shade[at], self.lit[at], 0]
+    }
+
+    pub fn marks(&self) -> Vec<u8> {
+        (0..self.rim.len()).flat_map(|at| self.mark(at)).collect()
     }
 }
 
@@ -347,7 +363,11 @@ fn stamps(map: &TileMap, tx: u32, ty: u32, out: &mut Vec<Stamp>) {
             z: here.z,
             tx,
             ty,
-            ink: Ink::Tile,
+            ink: if here.layer == look::Layer::Lava {
+                Ink::Lit
+            } else {
+                Ink::Tile
+            },
             art: sprite,
         });
     }
@@ -794,5 +814,16 @@ mod tests {
         assert_eq!(over([255, 0, 0, 0], [9, 9, 9, 255])[3], 255);
         let half = over([200, 200, 200, 128], [0, 0, 0, 255]);
         assert!(half[0] > 95 && half[0] < 105 && half[3] == 255, "{half:?}");
+    }
+
+    #[test]
+    fn lava_pixels_are_marked_lit_so_the_night_does_not_dim_them() {
+        let mut map = TileMap::filled(6, 6, bare(Ground::Sand));
+        map.set(3, 3, bare(Ground::Lava3));
+        let canvas = compose(&map, Area::tiles(&map, 0, 0, 6, 6));
+
+        assert!(canvas.lit_at(3 * PX + 1, 3 * PX + 1));
+        assert!(!canvas.lit_at(PX + 1, PX + 1));
+        assert_eq!(canvas.marks().len(), canvas.color.len() * 4);
     }
 }

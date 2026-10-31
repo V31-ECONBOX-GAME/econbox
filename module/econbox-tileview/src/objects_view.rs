@@ -372,9 +372,11 @@ pub fn draw(
     camera: Option<Single<(&Transform, &Projection), With<WorldCamera>>>,
     mode: Res<MapMode>,
     clock: Res<ObjectClock>,
+    options: Option<Res<crate::sleek::ScreenOptions>>,
     mut chunks: Query<&mut Visibility, With<ObjectChunk>>,
     map: Option<Res<TileMap>>,
 ) {
+    let tree_wind = options.is_none_or(|options| options.tree_wind);
     if drawn.epoch != tiles.epoch {
         for (_, built) in drawn.chunks.drain() {
             commands.entity(built.entity).despawn();
@@ -410,6 +412,14 @@ pub fn draw(
 
     if let Some(mut material) = materials.get_mut(&material) {
         material.wind.clock = Vec4::new(clock.wind, clock.animation, 0.0, 0.0);
+        let still = |mut params: [f32; 4]| {
+            if !tree_wind {
+                params[0] = 0.0;
+            }
+            Vec4::from_array(params)
+        };
+        material.wind.leaves = still(LEAVES);
+        material.wind.celestial = still(CELESTIAL);
     }
 
     if tween <= 0.0 {

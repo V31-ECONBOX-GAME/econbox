@@ -24,9 +24,10 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     let base = textureLoad(tiles, at, 0);
     let marks = textureLoad(runup, at, 0);
     let count = round(marks.r * 255.0);
-    var color = mix(ocean.rgb, base.rgb, base.a);
+    let night = select(tint.rgb, vec3(1.0), marks.b > 0.5);
+    var color = mix(ocean.rgb, base.rgb * night, base.a);
     let cover = 1.0 - pow(1.0 - rim.a, count);
     color = mix(color, rim.rgb, cover);
     color = color * (1.0 - shadow.x * step(0.5, marks.g));
-    return vec4(to_linear(color * tint.rgb), 1.0);
+    return vec4(to_linear(color), 1.0);
 }

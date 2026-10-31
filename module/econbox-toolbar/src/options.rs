@@ -259,7 +259,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         G(Glyph::Monolith),
-        Some("shadows"),
+        None,
     ),
     toggle(
         "tree_wind",
@@ -268,7 +268,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         G(Glyph::LivingPlant),
-        Some("swaying trees"),
+        None,
     ),
     toggle(
         "night_lights",
@@ -277,7 +277,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         G(Glyph::Beacon),
-        Some("day and night"),
+        None,
     ),
     toggle(
         "minimap_transition_animation",
@@ -304,7 +304,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         (0, 100, 100),
         G(Glyph::Layers),
-        Some("world ages"),
+        None,
     ),
     slider(
         "age_night_effect",
@@ -313,7 +313,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         (50, 100, 100),
         G(Glyph::Sleep),
-        Some("world ages"),
+        None,
     ),
     toggle(
         "autosaves",

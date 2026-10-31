@@ -2656,6 +2656,7 @@ name = "econbox-tileview"
 version = "0.2.0"
 dependencies = [
  "bevy",
+ "econbox-age",
  "econbox-camera",
  "econbox-clock",
  "econbox-tile",

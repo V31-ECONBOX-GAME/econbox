@@ -104,6 +104,7 @@ pub struct ScreenOptions {
     pub vignette: bool,
     pub transition: bool,
     pub shadows: bool,
+    pub tree_wind: bool,
 }
 
 impl Default for ScreenOptions {
@@ -113,6 +114,7 @@ impl Default for ScreenOptions {
             vignette: true,
             transition: true,
             shadows: true,
+            tree_wind: true,
         }
     }
 }
@@ -178,7 +180,7 @@ struct PassUniform {
 }
 
 #[derive(Resource)]
-struct SleekPipelines {
+pub(crate) struct SleekPipelines {
     single: BindGroupLayoutDescriptor,
     double: BindGroupLayoutDescriptor,
     sampler: Sampler,
@@ -278,7 +280,7 @@ fn init_pipelines(
 }
 
 #[derive(Component)]
-struct SleekTextures {
+pub(crate) struct SleekTextures {
     blur: Vec<CachedTexture>,
     pre: CachedTexture,
 }
@@ -372,7 +374,7 @@ fn draw(
     pass.draw(0..3, 0..1);
 }
 
-fn sleek(
+pub(crate) fn sleek(
     view: ViewQuery<(&ViewTarget, &ScreenEffects, &SleekTextures)>,
     pipelines: Option<Res<SleekPipelines>>,
     cache: Res<PipelineCache>,

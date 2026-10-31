@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
+use econbox_age::{Age, Ages, NIGHT_MAX};
 use econbox_camera::{TILE_SIZE, WorldCamera, Zoom};
 use econbox_tile::{Flora, Ground, Overlay, Tile, Wall};
 use econbox_tilemap::{Painted, TileMap, TilePos};
@@ -137,6 +138,18 @@ fn paint(map: &mut TileMap, centre: Vec2) -> Vec<TilePos> {
         );
         cells.push(TilePos::new(cx + 5, y));
     }
+    for y in cy + 5..=cy + 7 {
+        for x in cx - 4..=cx + 1 {
+            map.set(x, y, Tile::bare(Ground::Lava3));
+            cells.push(TilePos::new(x, y));
+        }
+        map.set(
+            cx + 4,
+            y,
+            Tile::bare(Ground::SoilLow).with_wall(Some(Wall::Light)),
+        );
+        cells.push(TilePos::new(cx + 4, y));
+    }
 
     cells
 }
@@ -208,6 +221,22 @@ fn drive(
     tour.at += 1;
 }
 
+fn age(mut ages: ResMut<Ages>) {
+    let Some(age) = std::env::var("ECONBOX_TOUR_AGE")
+        .ok()
+        .and_then(|id| Age::from_id(&id))
+    else {
+        return;
+    };
+    if ages.current != age {
+        ages.set_current(age, false);
+    }
+    if ages.asset().darkness {
+        ages.night = NIGHT_MAX;
+    }
+    ages.update_layers(10.0, 100);
+}
+
 fn main() {
     let out = std::env::var("ECONBOX_TOUR")
         .map(PathBuf::from)
@@ -222,6 +251,6 @@ fn main() {
         out,
         spot: None,
     })
-    .add_systems(Update, (offscreen, drive));
+    .add_systems(Update, (offscreen, drive, age));
     app.run();
 }
