@@ -18,7 +18,7 @@ use bevy::ui::widget::NodeImageMode;
 use econbox_art::window::Scene;
 use econbox_art::{Glyph, Icon};
 use econbox_worldgen::{
-    MAP_SIZES, MapGenSetting, MapGenValues, MapSize, TEMPLATE_IDS, TemplateId, WorldConfig, setting,
+    MAP_SIZES, MapGenSetting, MapGenValues, MapSize, TemplateId, WorldConfig, setting,
 };
 use std::collections::HashMap;
 
@@ -31,7 +31,28 @@ pub const STEP_BUTTON: f32 = 21.0;
 pub const FOOTER: f32 = 31.0;
 pub const PREVIEW_SIDE: u32 = 64;
 pub const PREVIEW_WORLD: u32 = 256;
-pub const DISABLED: Color = Color::srgb(0.8, 0.8, 0.8);
+pub const DISABLED: Color = Color::srgba(1.0, 1.0, 1.0, 0.13);
+pub const FAINT: Color = Color::srgba(1.0, 1.0, 1.0, 0.3);
+pub const SUNK: Color = Color::srgba(1.0, 1.0, 1.0, 0.86);
+
+pub const GRID_ORDER: [TemplateId; 16] = [
+    TemplateId::Continent,
+    TemplateId::BoxWorld,
+    TemplateId::Islands,
+    TemplateId::BoringPlains,
+    TemplateId::Donut,
+    TemplateId::Toast,
+    TemplateId::Pancake,
+    TemplateId::DormantVolcano,
+    TemplateId::Cheese,
+    TemplateId::BadApple,
+    TemplateId::ChaosPearl,
+    TemplateId::Lasagna,
+    TemplateId::Anthill,
+    TemplateId::Checkerboard,
+    TemplateId::Cubicles,
+    TemplateId::Empty,
+];
 
 pub const ROW_ORDER: [&str; 18] = [
     "gen_random_shapes",
@@ -113,7 +134,7 @@ pub fn template_name(id: TemplateId) -> &'static str {
         TemplateId::Cheese => "Cheese",
         TemplateId::BadApple => "Bad Apple",
         TemplateId::Donut => "Donut",
-        TemplateId::Lasagna => "Lasagna",
+        TemplateId::Lasagna => "Chaos Lasagna",
         TemplateId::ChaosPearl => "Chaos Pearl",
         TemplateId::Anthill => "Anthill",
         TemplateId::Empty => "Empty",
@@ -122,45 +143,45 @@ pub fn template_name(id: TemplateId) -> &'static str {
 
 pub fn template_about(id: TemplateId) -> &'static str {
     match id {
-        TemplateId::Continent => "One big land in the middle of the sea, with snowy peaks.",
-        TemplateId::BoxWorld => "Land fenced in by mountains along every edge.",
-        TemplateId::Islands => "Many islands scattered across open water.",
-        TemplateId::Toast => "A square slab of land with soft edges and no mountains.",
-        TemplateId::Pancake => "A flat round land without mountains.",
-        TemplateId::BoringPlains => "Wide plains with barely any water.",
-        TemplateId::Checkerboard => "Land and water laid out in squares.",
-        TemplateId::Cubicles => "Rooms of land walled off by mountains.",
-        TemplateId::DormantVolcano => "A raised island around a quiet peak.",
-        TemplateId::Cheese => "Land full of holes and pools.",
-        TemplateId::BadApple => "A round land with a mountain crater at its heart.",
-        TemplateId::Donut => "A ring of land around a central lake.",
-        TemplateId::Lasagna => "Low layered land in a square sea.",
-        TemplateId::ChaosPearl => "A low round land shaped by noise.",
-        TemplateId::Anthill => "Tunnels carved through solid rock.",
-        TemplateId::Empty => "Nothing but ocean, ready to be shaped.",
+        TemplateId::Continent => "One big landmass",
+        TemplateId::BoxWorld => "World in da Box",
+        TemplateId::Islands => "A few smaller islands",
+        TemplateId::Toast => "Square flat world",
+        TemplateId::Pancake => "Round flat world",
+        TemplateId::BoringPlains => "They are very flat",
+        TemplateId::Checkerboard => "Time to play a game!",
+        TemplateId::Cubicles => "Built for an evil overlord",
+        TemplateId::DormantVolcano => "Huge island created from a volcano ages ago",
+        TemplateId::Cheese => "Big landmass with many lakes",
+        TemplateId::BadApple => "Civilizations can live in it",
+        TemplateId::Donut => "World with a lake in the center",
+        TemplateId::Lasagna => "Formed after 100 worlds collided together!",
+        TemplateId::ChaosPearl => "Formed after 99 worlds collided together!",
+        TemplateId::Anthill => "Ants of the Ancients",
+        TemplateId::Empty => "Absolute void. A perfect start",
     }
 }
 
 pub fn setting_name(id: &str) -> &'static str {
     match id {
         "gen_random_shapes" => "Random Shapes",
-        "gen_cubicles_sizes" => "Cubicle Size",
-        "gen_perlin_scale_stage_1" => "Main Noise",
-        "gen_perlin_scale_stage_2" => "Detail Noise",
-        "gen_perlin_scale_stage_3" => "Bonus Noise",
+        "gen_cubicles_sizes" => "Cubicle Sizes",
+        "gen_perlin_scale_stage_1" => "Noise: Main Level",
+        "gen_perlin_scale_stage_2" => "Noise: Details",
+        "gen_perlin_scale_stage_3" => "Noise: Bonus",
         "gen_random_biomes" => "Random Biomes",
         "gen_mountain_edges" => "Mountain Edges",
-        "gen_add_vegetation" => "Vegetation",
-        "gen_add_resources" => "Resources",
+        "gen_add_vegetation" => "Spawn Vegetation",
+        "gen_add_resources" => "Spawn Resources",
         "gen_add_center_lake" => "Center Lake",
         "gen_add_center_land" => "Center Land",
         "gen_round_edges" => "Round Edges",
         "gen_square_edges" => "Square Edges",
-        "gen_ring_effect" => "Ring Effect",
+        "gen_ring_effect" => "Tree Ring",
         "gen_low_ground" => "Low Ground",
         "gen_high_ground" => "High Ground",
         "gen_remove_mountains" => "Remove Mountains",
-        "gen_forbidden_knowledge" => "Forbidden Knowledge",
+        "gen_forbidden_knowledge" => "Forbidden Setting",
         _ => "Setting",
     }
 }
@@ -238,6 +259,9 @@ pub struct SizeButton;
 
 #[derive(Component)]
 pub struct SizeLabel;
+
+#[derive(Component)]
+pub struct SizeCounter;
 
 #[derive(Component)]
 pub struct SizeWarning;
@@ -347,8 +371,8 @@ fn spawn_templates(commands: &mut Commands, kit: &Kit) {
             label(
                 row,
                 kit,
-                "Pick a template to start a new world.",
-                8.0,
+                "Choose a template to GENERATE a random foundation for your world. Your CURRENT WORLD will be lost!",
+                6.0,
                 Color::WHITE,
                 Vec2::new(CONTENT_WIDTH * 0.5 + 9.9375, 36.849 * 0.5),
                 Vec2::new(155.005, 29.7116),
@@ -364,7 +388,7 @@ fn spawn_templates(commands: &mut Commands, kit: &Kit) {
                 ..default()
             })
             .with_children(|cells| {
-                for id in TEMPLATE_IDS {
+                for id in GRID_ORDER {
                     let preview = kit.template_previews.get(&id).cloned().unwrap_or_default();
                     cells
                         .spawn((
@@ -441,8 +465,10 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
             .with_children(|area| {
                 area.spawn((
                     Pickable::IGNORE,
-                    Text::new("Shape your world, then create it."),
-                    kit.text(8.0),
+                    Text::new(
+                        "Choose a size and other configurations for your newly generated world. Please note that changing some of these values could result in very weird landscapes!",
+                    ),
+                    kit.text(6.0),
                     TextColor(Color::WHITE),
                     TextLayout::justify(bevy::text::Justify::Center),
                     shadow(),
@@ -465,8 +491,8 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
             .with_children(|area| {
                 area.spawn((
                     Pickable::IGNORE,
-                    Text::new("Big worlds need a strong computer."),
-                    kit.text(8.0),
+                    Text::new("Warning: A big world size can affect game performance"),
+                    kit.text(7.0),
                     TextColor(crate::tips::WARN),
                     TextLayout::justify(bevy::text::Justify::Center),
                     shadow(),
@@ -538,6 +564,7 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
                     ImageNode {
                         image: kit.inset.clone(),
                         image_mode: sliced(4.0),
+                        color: SUNK,
                         ..default()
                     },
                 ))
@@ -550,6 +577,26 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
                         TextColor(Color::WHITE),
                         shadow(),
                     ));
+                    inside
+                        .spawn((
+                            Pickable::IGNORE,
+                            Node {
+                                position_type: PositionType::Absolute,
+                                right: px(5.0),
+                                height: px(18.3484),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                        ))
+                        .with_children(|corner| {
+                            corner.spawn((
+                                SizeCounter,
+                                Pickable::IGNORE,
+                                Text::new(""),
+                                kit.text(7.0),
+                                TextColor(FAINT),
+                            ));
+                        });
                 });
         });
 
@@ -573,19 +620,38 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
                 ..default()
             },
             ImageNode {
-                image: kit.gray_bar.clone(),
-                image_mode: sliced(4.0),
+                image: kit.red_bar.clone(),
+                image_mode: sliced(6.0),
                 ..default()
             },
         ))
         .with_children(|button| {
-            button.spawn((
-                Pickable::IGNORE,
-                Text::new("RESET TO DEFAULT"),
-                kit.text(8.0),
-                TextColor(Color::WHITE),
-                shadow(),
-            ));
+            button
+                .spawn((
+                    Pickable::IGNORE,
+                    Node {
+                        width: px(ROW.x - 53.3605),
+                        height: px(18.3484),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ImageNode {
+                        image: kit.inset.clone(),
+                        image_mode: sliced(4.0),
+                        color: SUNK,
+                        ..default()
+                    },
+                ))
+                .with_children(|inside| {
+                    inside.spawn((
+                        Pickable::IGNORE,
+                        Text::new("RESET TEMPLATE"),
+                        kit.text(8.0),
+                        TextColor(Color::WHITE),
+                        shadow(),
+                    ));
+                });
         });
     });
 
@@ -615,7 +681,7 @@ fn spawn_custom(commands: &mut Commands, kit: &Kit) {
             .with_children(|button| {
                 button.spawn((
                     Pickable::IGNORE,
-                    Text::new("Create World"),
+                    Text::new("CREATE"),
                     kit.text(11.0),
                     TextColor(Color::WHITE),
                     shadow(),
@@ -804,8 +870,12 @@ pub fn refresh(
     draft: Res<WorldDraft>,
     kit: Option<Res<Kit>>,
     mut rows: Query<(&SettingRow, &mut Node)>,
-    mut counters: Query<(&Counter, &mut Text), Without<SizeLabel>>,
-    mut labels: Query<(&SwitchLabel, &mut Text), (Without<Counter>, Without<SizeLabel>)>,
+    mut resets: Query<&mut Node, (With<ResetButton>, Without<SettingRow>)>,
+    mut counters: Query<(&Counter, &mut Text), (Without<SizeLabel>, Without<SizeCounter>)>,
+    mut labels: Query<
+        (&SwitchLabel, &mut Text),
+        (Without<Counter>, Without<SizeLabel>, Without<SizeCounter>),
+    >,
     mut marks: Query<(&SwitchMark, &mut ImageNode), (Without<RowInk>, Without<Preview>)>,
     mut switches: Query<
         (&SwitchButton, &mut ImageNode),
@@ -815,7 +885,14 @@ pub fn refresh(
         (&RowInk, Option<&mut TextColor>, Option<&mut ImageNode>),
         (Without<SwitchButton>, Without<Preview>),
     >,
-    mut sizes: Query<&mut Text, (With<SizeLabel>, Without<Counter>)>,
+    mut sizes: Query<
+        (&mut Text, Has<SizeCounter>),
+        (
+            Or<(With<SizeLabel>, With<SizeCounter>)>,
+            Without<Counter>,
+            Without<SwitchLabel>,
+        ),
+    >,
     mut warnings: Query<&mut Visibility, (With<SizeWarning>, Without<Blurb>)>,
     mut blurbs: Query<&mut Visibility, (With<Blurb>, Without<SizeWarning>)>,
     mut previews: Query<
@@ -844,6 +921,17 @@ pub fn refresh(
         };
         if node.display != display {
             node.display = display;
+        }
+    }
+
+    let reset = if draft.config.template.template().show_reset_button {
+        Display::Flex
+    } else {
+        Display::None
+    };
+    for mut node in &mut resets {
+        if node.display != reset {
+            node.display = reset;
         }
     }
 
@@ -890,8 +978,13 @@ pub fn refresh(
     }
 
     let size = draft.config.size;
-    for mut text in &mut sizes {
-        let wanted = format!("{} {}x{}", size_name(size), size.tiles(), size.tiles());
+    let at = MAP_SIZES.iter().position(|s| *s == size).unwrap_or(0);
+    for (mut text, counter) in &mut sizes {
+        let wanted = if counter {
+            format!("{}/{}", at + 1, MAP_SIZES.len())
+        } else {
+            size_name(size).to_uppercase()
+        };
         if text.as_str() != wanted {
             **text = wanted;
         }
@@ -1020,6 +1113,15 @@ mod tests {
             assert!(setting(id).is_some(), "{id}");
         }
         assert_eq!(ROW_ORDER.len(), econbox_worldgen::SETTINGS.len());
+    }
+
+    #[test]
+    fn the_grid_shows_every_template_once_in_worldboxs_order() {
+        for id in econbox_worldgen::TEMPLATE_IDS {
+            assert_eq!(GRID_ORDER.iter().filter(|g| **g == id).count(), 1, "{id:?}");
+        }
+        assert_eq!(GRID_ORDER[3], TemplateId::BoringPlains);
+        assert_eq!(GRID_ORDER[15], TemplateId::Empty);
     }
 
     #[test]
