@@ -4,6 +4,8 @@ pub mod ambience;
 pub mod art;
 pub mod border;
 pub mod compose;
+pub mod fire_art;
+pub mod fire_view;
 pub mod look;
 pub mod objects;
 pub mod objects_view;
@@ -18,6 +20,7 @@ use bevy::prelude::*;
 use bevy::sprite_render::Material2dPlugin;
 use econbox_age::Ages;
 use econbox_camera::WorldBounds;
+use econbox_fire::Fires;
 use econbox_tilemap::Painted;
 use econbox_worldgen::{WorldConfig, generate};
 
@@ -60,6 +63,7 @@ impl Plugin for TileViewPlugin {
             Material2dPlugin::<objects_view::ObjectMaterial>::default(),
             SleekPlugin,
             AmbiencePlugin,
+            fire_view::FireViewPlugin,
         ))
         .init_resource::<objects_view::ObjectClock>()
         .init_resource::<quality::Night>()
@@ -103,6 +107,7 @@ fn spawn(
     settings: Res<WorldSettings>,
     seed: Res<WorldSeed>,
     ages: Option<ResMut<Ages>>,
+    fires: Option<ResMut<Fires>>,
 ) {
     let map = generate(WorldConfig {
         seed: seed.0,
@@ -111,6 +116,9 @@ fn spawn(
     *bounds = WorldBounds::from_tiles(map.width, map.height);
     if let Some(mut ages) = ages {
         ages.restart(seed.0);
+    }
+    if let Some(mut fires) = fires {
+        fires.clear();
     }
 
     commands.insert_resource(map);
@@ -123,6 +131,7 @@ fn rebuild(
     mut seed: ResMut<WorldSeed>,
     settings: Res<WorldSettings>,
     ages: Option<ResMut<Ages>>,
+    fires: Option<ResMut<Fires>>,
 ) {
     let Some(request) = asked.read().last().copied() else {
         return;
@@ -137,6 +146,9 @@ fn rebuild(
     *bounds = WorldBounds::from_tiles(map.width, map.height);
     if let Some(mut ages) = ages {
         ages.restart(request.seed);
+    }
+    if let Some(mut fires) = fires {
+        fires.clear();
     }
 
     commands.insert_resource(map);

@@ -3,7 +3,7 @@ use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 use econbox_age::{Age, Ages, NIGHT_MAX};
 use econbox_camera::{TILE_SIZE, WorldCamera, Zoom};
 use econbox_tile::{Flora, Ground, Overlay, Tile, Wall};
-use econbox_tilemap::{Painted, TileMap, TilePos};
+use econbox_tilemap::{Ignite, Painted, TileMap, TilePos};
 use econbox_tileview::{MapMode, look};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -14,6 +14,8 @@ enum Step {
     Span(f32),
     Look(f32, f32),
     Paint,
+    Ignite,
+    Speed(&'static str),
     Shot(&'static str),
 }
 
@@ -70,6 +72,16 @@ fn script() -> Vec<Step> {
         Step::Paint,
         Step::Wait(30),
         Step::Shot("5-painted"),
+        Step::Ignite,
+        Step::Wait(20),
+        Step::Shot("5a-ignited"),
+        Step::Wait(360),
+        Step::Shot("5b-burning"),
+        Step::Speed("x10"),
+        Step::Wait(240),
+        Step::Speed("x1"),
+        Step::Wait(5),
+        Step::Shot("5c-scorched"),
         Step::Span(300.0),
         Step::Look(0.0, 0.0),
         Step::Wait(90),
@@ -160,10 +172,12 @@ fn drive(
     mut zoom: ResMut<Zoom>,
     mut camera: Query<&mut Transform, With<WorldCamera>>,
     mut painted: MessageWriter<Painted>,
+    mut ignite: MessageWriter<Ignite>,
     mut exit: MessageWriter<AppExit>,
     mut map: Option<ResMut<TileMap>>,
     mode: Res<MapMode>,
     target: Option<Res<Offscreen>>,
+    mut clock: ResMut<econbox_clock::WorldClock>,
 ) {
     if tour.spot.is_none()
         && let Some(map) = map.as_deref()
@@ -201,6 +215,24 @@ fn drive(
             if let (Some(map), Some(spot)) = (map.as_deref_mut(), tour.spot) {
                 painted.write(Painted::new(paint(map, spot)));
             }
+        }
+        Step::Ignite => {
+            if let Some(spot) = tour.spot {
+                let (cx, cy) = (spot.x as u32, spot.y as u32);
+                for y in cy - 3..=cy + 3 {
+                    ignite.write(Ignite {
+                        pos: TilePos::new(cx, y),
+                    });
+                }
+                for x in cx - 12..=cx - 9 {
+                    ignite.write(Ignite {
+                        pos: TilePos::new(x, cy - 6),
+                    });
+                }
+            }
+        }
+        Step::Speed(id) => {
+            clock.select(id);
         }
         Step::Shot(name) => {
             let path = tour.out.join(format!("{name}.png"));

@@ -24,6 +24,7 @@ econbox-creature = { path = "module/econbox-creature" }
 econbox-cursor = { path = "module/econbox-cursor" }
 econbox-drops = { path = "module/econbox-drops" }
 econbox-field = { path = "module/econbox-field" }
+econbox-fire = { path = "module/econbox-fire" }
 econbox-flora = { path = "module/econbox-flora" }
 econbox-noise = { path = "module/econbox-noise" }
 econbox-tile = { path = "module/econbox-tile" }

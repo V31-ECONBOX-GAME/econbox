@@ -1,0 +1,15 @@
+[package]
+name = "econbox-fire"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+econbox-age = { workspace = true }
+econbox-clock = { workspace = true }
+econbox-tile = { workspace = true }
+econbox-tilemap = { workspace = true }
+
+[lints]
+workspace = true

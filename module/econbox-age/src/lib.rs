@@ -193,6 +193,18 @@ impl Dice {
         min + (self.roll() % u64::from(max_exclusive - min)) as u32
     }
 
+    pub fn unit(&mut self) -> f32 {
+        (self.roll() >> 40) as f32 / (1u64 << 24) as f32
+    }
+
+    pub fn float(&mut self, min: f32, max: f32) -> f32 {
+        min + (max - min) * self.unit()
+    }
+
+    pub fn chance(&mut self, odds: f32) -> bool {
+        self.unit() < odds
+    }
+
     pub fn pick<T: Copy>(&mut self, pool: &[T]) -> Option<T> {
         (!pool.is_empty()).then(|| pool[self.below(pool.len())])
     }

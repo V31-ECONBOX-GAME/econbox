@@ -13,6 +13,7 @@ use econbox_clouds::CloudsPlugin;
 use econbox_creature::CreaturePlugin;
 use econbox_cursor::CursorPlugin;
 use econbox_drops::DropsPlugin;
+use econbox_fire::FirePlugin;
 use econbox_flora::FloraPlugin;
 use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
@@ -61,6 +62,7 @@ pub fn app_with(source: &Config) -> App {
             FloraPlugin,
             DropsPlugin,
             CloudsPlugin,
+            FirePlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin))
         .add_systems(Update, (screen_options, age_options, power_selected));

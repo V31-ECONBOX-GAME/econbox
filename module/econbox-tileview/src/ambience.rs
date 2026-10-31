@@ -20,6 +20,7 @@ use bevy::render::{Render, RenderApp, RenderStartup, RenderSystems};
 use bevy::shader::Shader;
 use econbox_age::{AgeSettings, Ages, Overlay};
 use econbox_camera::{TILE_SIZE, WorldCamera};
+use econbox_fire::Fires;
 use econbox_tile::Wall;
 use econbox_tilemap::{Painted, TileMap};
 
@@ -31,6 +32,8 @@ pub const LAVA_ZONE_LIGHTS: usize = 5;
 pub const LAVA_LIGHT: f32 = 0.2;
 pub const LAVA_ZONE_LIGHT: f32 = 1.0;
 pub const WALL_LIGHT: f32 = 0.3;
+pub const FIRE_LIGHT: f32 = 0.2;
+pub const BURNING_LIGHT: f32 = 0.2;
 pub const LIGHT_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +108,7 @@ pub struct ZoneLights {
     pub lava: Vec<(u32, u32)>,
     pub walls: Vec<(u32, u32)>,
     pub things: Vec<(f32, f32, f32)>,
+    pub sparkles: Vec<(u32, u32)>,
     pub centre: Option<(u32, u32)>,
 }
 
@@ -133,10 +137,14 @@ impl ZoneLights {
                     continue;
                 }
                 for placed in objects::objects(tile, x, y) {
-                    if let objects::Sprite::Kind { kind, .. } = placed.sprite
-                        && let Some((size, offset_y)) = kind.light
-                    {
+                    let objects::Sprite::Kind { kind, .. } = placed.sprite else {
+                        continue;
+                    };
+                    if let Some((size, offset_y)) = kind.light {
                         zone.things.push((x as f32, y as f32 - offset_y, size));
+                    }
+                    if kind.sparkle {
+                        zone.sparkles.push((x, y));
                     }
                 }
             }
@@ -182,6 +190,7 @@ pub struct LightZones {
     pub columns: u32,
     pub rows: u32,
     pub zones: Vec<Option<ZoneLights>>,
+    pub sparkle_cache: Option<Vec<(u32, u32)>>,
 }
 
 impl LightZones {
@@ -190,6 +199,31 @@ impl LightZones {
         self.columns = map.width.div_ceil(ZONE);
         self.rows = map.height.div_ceil(ZONE);
         self.zones = vec![None; (self.columns * self.rows) as usize];
+        self.sparkle_cache = None;
+    }
+
+    pub fn ensure(&mut self, map: &TileMap, epoch: u64) {
+        if self.epoch != epoch
+            || self.zones.is_empty()
+            || self.columns != map.width.div_ceil(ZONE)
+            || self.rows != map.height.div_ceil(ZONE)
+        {
+            self.reset(map, epoch);
+        }
+    }
+
+    pub fn sparkles(&mut self, map: &TileMap) -> Vec<(u32, u32)> {
+        if let Some(cached) = &self.sparkle_cache {
+            return cached.clone();
+        }
+        let mut found = Vec::new();
+        for zy in 0..self.rows {
+            for zx in 0..self.columns {
+                found.extend(self.zone(map, zx, zy).sparkles.iter().copied());
+            }
+        }
+        self.sparkle_cache = Some(found.clone());
+        found
     }
 
     pub fn zone_of(&self, map: &TileMap, x: u32, y: u32) -> (u32, u32) {
@@ -200,6 +234,7 @@ impl LightZones {
         let (zx, zy) = self.zone_of(map, x, y);
         if let Some(slot) = self.zones.get_mut((zy * self.columns + zx) as usize) {
             *slot = None;
+            self.sparkle_cache = None;
         }
     }
 
@@ -266,6 +301,38 @@ pub fn blob_quad(blob: &LightBlob, centre: Vec2, area: Rect) -> Option<Vec4> {
     (!outside && size.x > 0.0).then(|| Vec4::new(ndc.x, ndc.y, size.x, size.y))
 }
 
+pub fn fire_blobs(
+    map: &TileMap,
+    fires: &Fires,
+    tiles: (u32, u32, u32, u32),
+    gameplay: bool,
+    out: &mut Vec<LightBlob>,
+) {
+    let (x0, y0, x1, y1) = tiles;
+    let inside = |index: u32| {
+        let x = index % map.width;
+        let y = index / map.width;
+        (x >= x0 && x <= x1 && y >= y0 && y <= y1).then_some((x, y))
+    };
+    if gameplay {
+        out.extend(
+            fires
+                .burning
+                .keys()
+                .filter_map(|&index| inside(index))
+                .map(|(x, y)| LightBlob::at_tile(map, x as f32, y as f32, FIRE_LIGHT)),
+        );
+    }
+    out.extend(fires.objects.keys().map(|&index| {
+        LightBlob::at_tile(
+            map,
+            (index % map.width) as f32,
+            (index / map.width) as f32,
+            BURNING_LIGHT,
+        )
+    }));
+}
+
 pub fn clear_blobs(mut blobs: ResMut<LightBlobs>) {
     blobs.0.clear();
 }
@@ -301,6 +368,7 @@ pub fn gather(
     mode: Res<MapMode>,
     camera: Option<Single<(&Transform, &Projection), With<WorldCamera>>>,
     blobs: Res<LightBlobs>,
+    fires: Option<Res<Fires>>,
     mut zones: ResMut<LightZones>,
     mut ambience: ResMut<Ambience>,
 ) {
@@ -323,9 +391,7 @@ pub fn gather(
         && map.width > 0
         && map.height > 0
     {
-        if zones.epoch != drawn.epoch || zones.zones.is_empty() {
-            zones.reset(&map, drawn.epoch);
-        }
+        zones.ensure(&map, drawn.epoch);
         let centre = transform.translation.truncate();
         let area = projection.area;
         let tiles = visible_tiles(&map, centre, area.size());
@@ -346,6 +412,13 @@ pub fn gather(
             for zx in zx0..=zx1 {
                 zones.zone(&map, zx, zy).thing_blobs(&map, &mut found);
             }
+        }
+
+        if let Some(fires) = fires.as_deref()
+            && fires.width == map.width
+            && fires.height == map.height
+        {
+            fire_blobs(&map, fires, tiles, mode.tiles_on(), &mut found);
         }
 
         next.blobs = found
