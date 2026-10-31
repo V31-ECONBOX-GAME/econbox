@@ -77,6 +77,34 @@ impl Age {
         }
     }
 
+    pub fn freezes_world(self) -> bool {
+        matches!(self, Self::Ice | Self::Despair)
+    }
+
+    pub fn thaws_world(self) -> bool {
+        !matches!(self, Self::Ice | Self::Despair | Self::Unknown)
+    }
+
+    pub fn thaws_mountains(self) -> bool {
+        matches!(self, Self::Sun | Self::Chaos | Self::Wonders)
+    }
+
+    pub fn sunny(self) -> bool {
+        self == Self::Sun
+    }
+
+    pub fn temperature_damage_bonus(self) -> i32 {
+        match self {
+            Self::Hope => 7,
+            Self::Sun => 15,
+            Self::Dark => -4,
+            Self::Moon => -3,
+            Self::Ice => 5,
+            Self::Despair => 3,
+            _ => 1,
+        }
+    }
+
     pub fn pick_cloud(self, roll: u32) -> Option<&'static str> {
         let pool = self.clouds();
         let total: u32 = pool.iter().map(|(_, weight)| weight).sum();
@@ -135,6 +163,19 @@ mod tests {
         }
 
         assert_eq!(counts, [5000, 1000, 2000]);
+    }
+
+    #[test]
+    fn ice_and_despair_freeze_the_world_and_every_other_named_age_thaws_it() {
+        for age in AGES {
+            assert!(!(age.freezes_world() && age.thaws_world()), "{age:?}");
+        }
+
+        assert!(Age::Ice.freezes_world() && Age::Despair.freezes_world());
+        assert!(Age::Hope.thaws_world() && !Age::Hope.thaws_mountains());
+        assert!(Age::Sun.thaws_mountains() && Age::Sun.sunny());
+        assert_eq!(Age::Hope.temperature_damage_bonus(), 7);
+        assert_eq!(Age::Unknown.temperature_damage_bonus(), 1);
     }
 
     #[test]

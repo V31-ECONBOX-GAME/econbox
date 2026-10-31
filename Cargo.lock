@@ -2444,6 +2444,7 @@ dependencies = [
  "econbox-cursor",
  "econbox-drops",
  "econbox-flora",
+ "econbox-temperature",
  "econbox-tile",
  "econbox-tilemap",
  "econbox-tileview",
@@ -2638,6 +2639,18 @@ dependencies = [
 [[package]]
 name = "econbox-noise"
 version = "0.2.0"
+
+[[package]]
+name = "econbox-temperature"
+version = "0.2.0"
+dependencies = [
+ "bevy",
+ "econbox-age",
+ "econbox-clock",
+ "econbox-noise",
+ "econbox-tile",
+ "econbox-tilemap",
+]
 
 [[package]]
 name = "econbox-tile"

@@ -12,7 +12,7 @@ use econbox_camera::{TILE_SIZE, WorldBounds};
 use econbox_clock::{Frames, WorldClock};
 use econbox_creature::Strike;
 use econbox_noise::Randy;
-use econbox_tilemap::{Painted, TileMap, TilePos};
+use econbox_tilemap::{Flash, Painted, TileMap, TilePos};
 use kind::{DROP_SCALE, FALLING_HEIGHT, FALLING_SPEED_RANDOM};
 
 pub const DROP_LAYER: f32 = 4.3;
@@ -126,12 +126,12 @@ impl Falling {
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Flash {
+pub struct Glint {
     pub pos: TilePos,
     pub state: i32,
 }
 
-impl Flash {
+impl Glint {
     pub fn alpha(self) -> f32 {
         if self.state <= 0 {
             0.0
@@ -177,12 +177,13 @@ impl Plugin for DropsPlugin {
             .init_resource::<DropDice>()
             .add_message::<SpawnDrop>()
             .add_message::<Landed>()
+            .add_message::<Flash>()
             .add_message::<Painted>()
             .add_message::<Strike>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (launch, fall, fade, place)
+                (launch, fall, glint, fade, place)
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -229,6 +230,7 @@ fn fall(
     mut painted: MessageWriter<Painted>,
     mut strikes: MessageWriter<Strike>,
     mut landed: MessageWriter<Landed>,
+    mut flashes: MessageWriter<Flash>,
 ) {
     let dt = clock.step();
     let mut cells = Vec::new();
@@ -264,18 +266,10 @@ fn fall(
                 kind: drop.kind,
                 pos,
             });
-            commands.spawn((
-                Flash {
-                    pos,
-                    state: FLASH_STATE,
-                },
-                Sprite {
-                    color: Color::NONE,
-                    custom_size: Some(Vec2::splat(TILE_SIZE)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 0.0, FLASH_LAYER),
-            ));
+            flashes.write(Flash {
+                pos,
+                strength: FLASH_STATE,
+            });
         }
     }
 
@@ -284,7 +278,38 @@ fn fall(
     }
 }
 
-fn fade(mut commands: Commands, frames: Res<Frames>, mut flashes: Query<(Entity, &mut Flash)>) {
+fn glint(mut commands: Commands, mut asked: MessageReader<Flash>, mut glints: Query<&mut Glint>) {
+    let mut fresh: Vec<Glint> = Vec::new();
+
+    for flash in asked.read() {
+        let state = flash.strength.min(FLASH_SHADES - 1);
+
+        if let Some(mut glint) = glints.iter_mut().find(|glint| glint.pos == flash.pos) {
+            glint.state = glint.state.max(state);
+        } else if let Some(glint) = fresh.iter_mut().find(|glint| glint.pos == flash.pos) {
+            glint.state = glint.state.max(state);
+        } else {
+            fresh.push(Glint {
+                pos: flash.pos,
+                state,
+            });
+        }
+    }
+
+    for glint in fresh {
+        commands.spawn((
+            glint,
+            Sprite {
+                color: Color::NONE,
+                custom_size: Some(Vec2::splat(TILE_SIZE)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, FLASH_LAYER),
+        ));
+    }
+}
+
+fn fade(mut commands: Commands, frames: Res<Frames>, mut flashes: Query<(Entity, &mut Glint)>) {
     for (entity, mut flash) in &mut flashes {
         flash.state -= frames.due as i32;
 
@@ -298,8 +323,8 @@ fn place(
     bounds: Res<WorldBounds>,
     art: Res<DropArt>,
     map: Res<TileMap>,
-    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility), Without<Flash>>,
-    mut flashes: Query<(&Flash, &mut Sprite, &mut Transform), Without<Falling>>,
+    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility), Without<Glint>>,
+    mut flashes: Query<(&Glint, &mut Sprite, &mut Transform), Without<Falling>>,
 ) {
     let origin = -bounds.half();
 
@@ -409,13 +434,13 @@ mod tests {
 
     #[test]
     fn a_landing_flash_fades_from_a_quarter_white_to_nothing() {
-        let flash = Flash {
+        let flash = Glint {
             pos: TilePos::new(0, 0),
             state: FLASH_STATE,
         };
 
         assert!((flash.alpha() - 14.0 / 30.0 * 0.5).abs() < 1e-6);
-        assert_eq!(Flash { state: 0, ..flash }.alpha(), 0.0);
+        assert_eq!(Glint { state: 0, ..flash }.alpha(), 0.0);
     }
 
     #[test]
