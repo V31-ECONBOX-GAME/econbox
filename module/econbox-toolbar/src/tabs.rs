@@ -125,7 +125,7 @@ pub const MAIN: TabDef = TabDef {
             name: "New World",
             about: "Shape a fresh world from your own settings.",
             kind: Kind::Window,
-            act: Act::Planned("world templates window"),
+            act: Act::Window(Panel::NewWorld),
             look: Look::Glyph(Glyph::MapPen, None, None),
             sizes: false,
             brush: None,

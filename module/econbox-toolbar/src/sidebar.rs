@@ -70,6 +70,7 @@ pub struct Selector;
 pub fn opens(id: &str) -> Option<Panel> {
     match id {
         "settings_button" => Some(Panel::Other),
+        "custom_world_button" => Some(Panel::NewWorld),
         _ => None,
     }
 }

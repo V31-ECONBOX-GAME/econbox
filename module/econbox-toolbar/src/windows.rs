@@ -599,6 +599,28 @@ pub fn spawn_view(
     padding: (f32, f32),
     scrolls: bool,
 ) -> Entity {
+    spawn_view_with(
+        commands,
+        kit,
+        background,
+        panel,
+        spacing,
+        padding,
+        scrolls,
+        VIEW_HEIGHT,
+    )
+}
+
+pub fn spawn_view_with(
+    commands: &mut Commands,
+    kit: &Kit,
+    background: Entity,
+    panel: Panel,
+    spacing: f32,
+    padding: (f32, f32),
+    scrolls: bool,
+    height: f32,
+) -> Entity {
     let mut content = Entity::PLACEHOLDER;
 
     commands.entity(background).with_children(|frame| {
@@ -611,7 +633,7 @@ pub fn spawn_view(
                     left: px((FRAME_WIDTH - VIEW_WIDTH) * 0.5),
                     top: px(VIEW_TOP),
                     width: px(VIEW_WIDTH),
-                    height: px(VIEW_HEIGHT),
+                    height: px(height),
                     overflow: if scrolls {
                         Overflow::scroll_y()
                     } else {
@@ -993,6 +1015,8 @@ impl Panel {
             Self::Other => "Other",
             Self::Settings => "Settings",
             Self::Languages => "Languages",
+            Self::NewWorld => "New World",
+            Self::NewWorldCustom => "Customize World",
         }
     }
 
@@ -1001,6 +1025,7 @@ impl Panel {
             Self::Brushes => Glyph::Swirl,
             Self::Other | Self::Settings => Glyph::Gear,
             Self::Languages => Glyph::Bubbles,
+            Self::NewWorld | Self::NewWorldCustom => Glyph::Globe,
         }
     }
 
@@ -1008,6 +1033,7 @@ impl Panel {
         match self {
             Self::Brushes => None,
             Self::Other | Self::Settings | Self::Languages => Some("settings_button"),
+            Self::NewWorld | Self::NewWorldCustom => Some("custom_world_button"),
         }
     }
 }

@@ -2706,6 +2706,7 @@ dependencies = [
  "econbox-cursor",
  "econbox-tile",
  "econbox-tilemap",
+ "econbox-worldgen",
 ]
 
 [[package]]

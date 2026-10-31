@@ -10,6 +10,7 @@ mod keys;
 pub mod languages;
 pub mod layout;
 mod motion;
+pub mod newworld;
 pub mod options;
 mod other;
 mod panels;
@@ -63,6 +64,8 @@ pub enum Panel {
     Other,
     Settings,
     Languages,
+    NewWorld,
+    NewWorldCustom,
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -223,9 +226,11 @@ impl Plugin for ToolbarPlugin {
             .init_resource::<settings::SettingsTab>()
             .init_resource::<settings::SliderDrag>()
             .init_resource::<languages::Language>()
+            .init_resource::<newworld::WorldDraft>()
             .add_message::<Notice>()
             .add_message::<windows::Shown>()
             .add_message::<SpawnCloud>()
+            .add_message::<newworld::CreateWorld>()
             .add_observer(press::on_click)
             .add_observer(press::on_press)
             .add_observer(side::on_click)
@@ -238,6 +243,7 @@ impl Plugin for ToolbarPlugin {
             .add_observer(settings::on_press)
             .add_observer(other::on_click)
             .add_observer(languages::on_click)
+            .add_observer(newworld::on_click)
             .add_systems(
                 Startup,
                 (
@@ -250,6 +256,7 @@ impl Plugin for ToolbarPlugin {
                     other::spawn,
                     settings::spawn,
                     languages::spawn,
+                    newworld::spawn,
                     tips::spawn,
                     pointer::spawn,
                 )
@@ -296,6 +303,7 @@ impl Plugin for ToolbarPlugin {
                         settings::drag_slider,
                         settings::refresh,
                         languages::refresh,
+                        newworld::refresh,
                     )
                         .chain(),
                     (

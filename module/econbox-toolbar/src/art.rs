@@ -15,6 +15,7 @@ use econbox_art::{Glyph, Icon, Ink, SPRITE, Skin, glyph, icon, inked, sprite};
 use econbox_brush::{PRESETS, Preset, Shape, mask};
 use econbox_clock::SPEEDS;
 use econbox_creature::Species;
+use econbox_worldgen::{TEMPLATE_IDS, TemplateId};
 use std::collections::HashMap;
 
 #[derive(Resource, Debug, Clone)]
@@ -74,6 +75,8 @@ pub struct Kit {
     pub knob: Handle<Image>,
     pub shoulder: Handle<Image>,
     pub white_glyphs: HashMap<Glyph, Handle<Image>>,
+    pub template_previews: HashMap<TemplateId, Handle<Image>>,
+    pub gen_marks: HashMap<&'static str, Handle<Image>>,
 }
 
 pub const WINDOW_GLYPHS: [Glyph; 10] = [
@@ -364,6 +367,33 @@ pub fn forge(
         crab: bake(&square(look_pixels(Look::Creature(Species::Crab)))),
         sheep: bake(&square(look_pixels(Look::Creature(Species::Sheep)))),
         undo: bake(&square(icon(Icon::Undo, None))),
+        template_previews: TEMPLATE_IDS
+            .iter()
+            .map(|id| {
+                let side = crate::newworld::PREVIEW_SIDE;
+                let picture = Picture {
+                    width: side,
+                    height: side,
+                    pixels: crate::newworld::preview_pixels(*id),
+                };
+                (*id, bake(&picture))
+            })
+            .collect(),
+        gen_marks: crate::newworld::ROW_ORDER
+            .iter()
+            .map(|id| {
+                let pixels = match crate::newworld::setting_mark(id) {
+                    Mark::Glyph(kind) => glyph(kind, None),
+                    Mark::Icon(kind) => icon(kind, None),
+                };
+                (*id, pixels)
+            })
+            .chain([
+                ("plus", icon(Icon::Plus, None)),
+                ("minus", icon(Icon::Minus, None)),
+            ])
+            .map(|(id, pixels)| (id, bake(&square(pixels))))
+            .collect(),
         font: server.map(|server| server.load(FONT)).unwrap_or_default(),
     });
 }

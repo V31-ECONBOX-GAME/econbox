@@ -218,10 +218,47 @@ fn camera_script() -> Vec<Step> {
     steps
 }
 
+fn newworld_script() -> Vec<Step> {
+    use Spot::*;
+    use Step::*;
+
+    let islands = Window(27.0, 13.3);
+    let create = Window(0.0, -134.0);
+    vec![
+        Wait(90),
+        Shot("n01-start"),
+        Point(Button(TabId::Main, "custom_world_button")),
+        Wait(10),
+        Click(Button(TabId::Main, "custom_world_button")),
+        Wait(40),
+        Shot("n02-templates"),
+        Point(Window(0.0, 0.0)),
+        Wheel(-30.0),
+        Wait(20),
+        Point(islands),
+        Wait(20),
+        Shot("n03-template-grid"),
+        Click(islands),
+        Wait(40),
+        Shot("n04-customize"),
+        Point(Window(0.0, 0.0)),
+        Wheel(-30.0),
+        Wait(20),
+        Shot("n05-customize-bottom"),
+        Point(create),
+        Wait(10),
+        Click(create),
+        Wait(90),
+        Shot("n06-created"),
+        Wait(10),
+    ]
+}
+
 fn script() -> Vec<Step> {
     match std::env::var("ECONBOX_TOUR_SCRIPT").as_deref() {
         Ok("settings") => return settings_script(),
         Ok("camera") => return camera_script(),
+        Ok("newworld") => return newworld_script(),
         _ => {}
     }
 

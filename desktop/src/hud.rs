@@ -2,7 +2,9 @@
 
 use crate::prelude::*;
 use crate::world::{Land, Survey};
+use econbox_tileview::WorldSettings;
 use econbox_toolbar::UiLayer;
+use econbox_toolbar::newworld::CreateWorld;
 
 #[derive(Component)]
 struct HudLine(usize);
@@ -13,7 +15,7 @@ impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Survey>()
             .add_systems(Startup, spawn)
-            .add_systems(Update, (reshape, measure, refresh).chain());
+            .add_systems(Update, (create, reshape, measure, refresh).chain());
     }
 }
 
@@ -56,6 +58,23 @@ fn reshape(
             seed: next_seed(seed.0, time.elapsed_secs()),
         });
     }
+}
+
+fn create(
+    mut wanted: MessageReader<CreateWorld>,
+    time: Res<Time>,
+    seed: Res<WorldSeed>,
+    mut settings: ResMut<WorldSettings>,
+    mut asked: MessageWriter<Regenerate>,
+) {
+    let Some(CreateWorld(config)) = wanted.read().last().copied() else {
+        return;
+    };
+
+    settings.0 = config;
+    asked.write(Regenerate {
+        seed: next_seed(seed.0, time.elapsed_secs()),
+    });
 }
 
 fn next_seed(current: u32, seconds: f32) -> u32 {

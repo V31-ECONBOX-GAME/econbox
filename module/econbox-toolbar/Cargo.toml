@@ -15,6 +15,7 @@ econbox-creature = { workspace = true }
 econbox-cursor = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
+econbox-worldgen = { workspace = true }
 
 [lints]
 workspace = true
