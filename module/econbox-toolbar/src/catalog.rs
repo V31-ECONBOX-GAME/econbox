@@ -285,7 +285,11 @@ mod tests {
             assert!(tools.contains(&Tool::Ground(ground)), "{}", ground.name());
         }
 
-        for overlay in econbox_tile::OVERLAYS.iter().skip(1) {
+        for overlay in econbox_tile::OVERLAYS
+            .iter()
+            .skip(1)
+            .filter(|overlay| **overlay != econbox_tile::Overlay::Wasteland)
+        {
             assert!(
                 tools.contains(&Tool::Overlay(*overlay)),
                 "{}",

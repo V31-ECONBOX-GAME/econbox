@@ -38,6 +38,17 @@ pub struct Ignite {
     pub pos: TilePos,
 }
 
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Douse {
+    pub pos: TilePos,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Flash {
+    pub pos: TilePos,
+    pub strength: i32,
+}
+
 #[derive(Resource, Debug, Clone, PartialEq)]
 pub struct TileMap {
     pub width: u32,

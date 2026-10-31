@@ -27,6 +27,7 @@ econbox-field = { path = "module/econbox-field" }
 econbox-fire = { path = "module/econbox-fire" }
 econbox-flora = { path = "module/econbox-flora" }
 econbox-noise = { path = "module/econbox-noise" }
+econbox-temperature = { path = "module/econbox-temperature" }
 econbox-tile = { path = "module/econbox-tile" }
 econbox-tilemap = { path = "module/econbox-tilemap" }
 econbox-tileview = { path = "module/econbox-tileview" }

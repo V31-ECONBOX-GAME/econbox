@@ -23,6 +23,7 @@ econbox-cursor = { workspace = true }
 econbox-drops = { workspace = true }
 econbox-fire = { workspace = true }
 econbox-flora = { workspace = true }
+econbox-temperature = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 econbox-tileview = { workspace = true }

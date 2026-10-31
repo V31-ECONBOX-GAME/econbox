@@ -37,6 +37,7 @@ pub fn biome(overlay: Overlay) -> &'static Biome {
         Overlay::Void => &things::BIOME_SINGULARITY,
         Overlay::Paradox => &things::BIOME_PARADOX,
         Overlay::Clover => &things::BIOME_CLOVER,
+        Overlay::Wasteland => &things::BIOME_WASTELAND,
     }
 }
 

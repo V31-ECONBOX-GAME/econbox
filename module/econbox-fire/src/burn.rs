@@ -85,9 +85,11 @@ pub fn overlay(overlay: Overlay) -> Option<[Burn; 2]> {
         Overlay::Birch | Overlay::Maple | Overlay::Mushroom | Overlay::Clover => {
             pair(true, 4, 0.03, 0.03)
         }
-        Overlay::Swamp | Overlay::Desert | Overlay::Crystal | Overlay::Frost => {
-            pair(false, 5, 0.05, 0.06)
-        }
+        Overlay::Swamp
+        | Overlay::Desert
+        | Overlay::Crystal
+        | Overlay::Frost
+        | Overlay::Wasteland => pair(false, 5, 0.05, 0.06),
         Overlay::Blight => pair(true, 1, 0.02, 0.02),
         Overlay::Candy => pair(true, 4, 0.05, 0.06),
         Overlay::Garlic => pair(true, 5, 0.03, 0.03),

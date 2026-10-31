@@ -280,9 +280,10 @@ pub enum Overlay {
     Void,
     Paradox,
     Clover,
+    Wasteland,
 }
 
-pub const OVERLAYS: [Overlay; 24] = [
+pub const OVERLAYS: [Overlay; 25] = [
     Overlay::Bare,
     Overlay::Grass,
     Overlay::Jungle,
@@ -307,6 +308,7 @@ pub const OVERLAYS: [Overlay; 24] = [
     Overlay::Void,
     Overlay::Paradox,
     Overlay::Clover,
+    Overlay::Wasteland,
 ];
 
 impl Overlay {
@@ -336,6 +338,7 @@ impl Overlay {
             Self::Void => ([0x62, 0x30, 0x79], [0x50, 0x22, 0x63]),
             Self::Paradox => ([0x89, 0x69, 0x55], [0x74, 0x58, 0x44]),
             Self::Clover => ([0x49, 0xab, 0x87], [0x3e, 0x8c, 0x7b]),
+            Self::Wasteland => ([0x84, 0x93, 0x71], [0x6c, 0x77, 0x59]),
         };
 
         Some(if high { top } else { low })
@@ -367,6 +370,7 @@ impl Overlay {
             Self::Void => "singularity",
             Self::Paradox => "paradox",
             Self::Clover => "clover",
+            Self::Wasteland => "wasteland",
         }
     }
 
@@ -392,6 +396,7 @@ impl Overlay {
             Self::Rockland => 0.2,
             Self::Desert => 0.15,
             Self::Blight => 0.1,
+            Self::Wasteland => 0.1,
             Self::Frost => 0.1,
             Self::Infernal => 0.05,
             Self::Void => 0.02,
@@ -402,7 +407,7 @@ impl Overlay {
     pub fn is_living(self) -> bool {
         !matches!(
             self,
-            Self::Bare | Self::Infernal | Self::Blight | Self::Void
+            Self::Bare | Self::Infernal | Self::Blight | Self::Void | Self::Wasteland
         )
     }
 
@@ -587,6 +592,20 @@ impl Tile {
             frozen: frozen && self.ground.freeze_to().is_some(),
             ..self
         }
+    }
+
+    pub fn can_freeze(self) -> bool {
+        !self.frozen
+            && self.wall.is_none()
+            && self.ground.freeze_to().is_some()
+            && !matches!(
+                self.overlay,
+                Overlay::Infernal | Overlay::Pumpkin | Overlay::Frost
+            )
+    }
+
+    pub fn forever_frozen(self) -> bool {
+        self.overlay == Overlay::Frost
     }
 
     pub fn blocks(self) -> bool {
@@ -786,7 +805,7 @@ mod tests {
         let before = seen.len();
         seen.dedup();
 
-        assert_eq!(seen.len(), 57, "{} distinct of {before}", seen.len());
+        assert_eq!(seen.len(), 59, "{} distinct of {before}", seen.len());
     }
 
     #[test]

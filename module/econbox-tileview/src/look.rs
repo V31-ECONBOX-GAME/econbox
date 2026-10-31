@@ -502,6 +502,13 @@ static PARADOX: [Look; 2] = biome(
     [3, 3],
     Style::Raised,
 );
+static WASTELAND: [Look; 2] = biome(
+    Overlay::Wasteland,
+    ["wasteland_low", "wasteland_high"],
+    [22, 23],
+    [3, 3],
+    Style::Speckle(hex(0x5c6a4c)),
+);
 static CLOVER: [Look; 2] = biome(
     Overlay::Clover,
     ["clover_low", "clover_high"],
@@ -509,6 +516,112 @@ static CLOVER: [Look; 2] = biome(
     [3, 3],
     Style::Speckle(hex(0x2f7a64)),
 );
+
+pub static ICE: Look = Look {
+    layer: Layer::Ocean,
+    height_min: 70,
+    edge: Some(hex(0x8ec4e6)),
+    liquid: true,
+    ocean: true,
+    ..look(
+        "ice",
+        Paint::Fixed(hex(0xa7d6f4)),
+        17,
+        1,
+        Style::Speckle(hex(0xd4ecfa)),
+    )
+};
+pub static SNOW_SAND: Look = Look {
+    height_min: 98,
+    ground: true,
+    ..look(
+        "snow_sand",
+        Paint::Fixed(hex(0xaff5f1)),
+        19,
+        1,
+        Style::Speckle(hex(0xe0fbf9)),
+    )
+};
+pub static FROZEN_LOW: Look = Look {
+    height_min: 108,
+    edge: Some(hex(0xf5f7f6)),
+    ground: true,
+    ..look(
+        "frozen_low",
+        Paint::Fixed(hex(0xbad5d3)),
+        83,
+        4,
+        Style::Speckle(hex(0xe6f2fa)),
+    )
+};
+pub static FROZEN_HIGH: Look = Look {
+    height_min: 128,
+    edge: Some(hex(0xf5f7f6)),
+    ground: true,
+    ..look(
+        "frozen_high",
+        Paint::Fixed(hex(0xd3e4e3)),
+        84,
+        3,
+        Style::Speckle(hex(0xf0f7fb)),
+    )
+};
+pub static SNOW_HILLS: Look = Look {
+    height_min: 199,
+    ground: true,
+    rocks: true,
+    edge_hills: true,
+    ..look(
+        "snow_hills",
+        Paint::Fixed(hex(0xe2edec)),
+        93,
+        1,
+        Style::Hills,
+    )
+};
+pub static SNOW_BLOCK: Look = Look {
+    layer: Layer::Block,
+    height_min: 210,
+    block: true,
+    rocks: true,
+    edge_mountains: true,
+    edge_frame: Some(2),
+    ..look(
+        "snow_block",
+        Paint::Fixed(hex(0xfcfdfd)),
+        95,
+        1,
+        Style::Mountains,
+    )
+};
+pub static SNOW_SUMMIT: Look = Look {
+    layer: Layer::Block,
+    height_min: 230,
+    block: true,
+    rocks: true,
+    edge_mountains: true,
+    edge_frame: Some(2),
+    ..look(
+        "snow_summit",
+        Paint::Fixed(hex(0xfcfdfd)),
+        97,
+        6,
+        Style::Summit,
+    )
+};
+
+pub fn frozen(ground: Ground) -> Option<&'static Look> {
+    Some(match ground {
+        Ground::ShallowWaters => &ICE,
+        Ground::Sand => &SNOW_SAND,
+        Ground::SoilLow => &FROZEN_LOW,
+        Ground::SoilHigh => &FROZEN_HIGH,
+        Ground::Hills => &SNOW_HILLS,
+        Ground::Mountains => &SNOW_BLOCK,
+        Ground::Summit => &SNOW_SUMMIT,
+        _ => return None,
+    })
+}
 
 pub fn ground(ground: Ground) -> &'static Look {
     match ground {
@@ -552,6 +665,7 @@ pub fn biome_pair(overlay: Overlay) -> Option<&'static [Look; 2]> {
         Overlay::Void => &SINGULARITY,
         Overlay::Paradox => &PARADOX,
         Overlay::Clover => &CLOVER,
+        Overlay::Wasteland => &WASTELAND,
     })
 }
 
@@ -576,6 +690,10 @@ pub fn of(tile: Tile) -> &'static Look {
         return wall(kind);
     }
 
+    if let Some(look) = frozen(tile.ground).filter(|_| tile.frozen) {
+        return look;
+    }
+
     match biome_pair(tile.overlay) {
         Some(pair) => &pair[usize::from(tile.ground.is_high())],
         None => ground(tile.ground),
@@ -591,6 +709,7 @@ pub fn all() -> Vec<&'static Look> {
             .flat_map(|pair| pair.iter()),
     );
     looks.extend(econbox_tile::WALLS.into_iter().map(wall));
+    looks.extend(econbox_tile::GROUNDS.into_iter().filter_map(frozen));
     looks.extend([&BORDER_PIT, &BORDER_WATER, &BORDER_WATER_RUNUP]);
     looks
 }

@@ -15,6 +15,7 @@ use econbox_cursor::CursorPlugin;
 use econbox_drops::DropsPlugin;
 use econbox_fire::FirePlugin;
 use econbox_flora::FloraPlugin;
+use econbox_temperature::TemperaturePlugin;
 use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
@@ -63,6 +64,7 @@ pub fn app_with(source: &Config) -> App {
             DropsPlugin,
             CloudsPlugin,
             FirePlugin,
+            TemperaturePlugin,
         ))
         .add_plugins((HudPlugin, ToolbarPlugin))
         .add_systems(Update, (screen_options, age_options, power_selected));

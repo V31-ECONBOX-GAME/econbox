@@ -7,12 +7,14 @@ pub mod land;
 pub use kind::{DROPS, DropKind};
 pub use land::Landing;
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use econbox_camera::{TILE_SIZE, WorldBounds};
 use econbox_clock::{Frames, WorldClock};
-use econbox_creature::Strike;
+use econbox_creature::{Afflict, Census, Creature, Harm, Relieve, Spawn, Strike, tile_of};
 use econbox_noise::Randy;
-use econbox_tilemap::{Painted, TileMap, TilePos};
+use econbox_temperature::Frost;
+use econbox_tilemap::{Douse, Flash, Ignite, Painted, TileMap, TilePos};
 use kind::{DROP_SCALE, FALLING_HEIGHT, FALLING_SPEED_RANDOM};
 
 pub const DROP_LAYER: f32 = 4.3;
@@ -126,12 +128,12 @@ impl Falling {
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Flash {
+pub struct Glint {
     pub pos: TilePos,
     pub state: i32,
 }
 
-impl Flash {
+impl Glint {
     pub fn alpha(self) -> f32 {
         if self.state <= 0 {
             0.0
@@ -177,12 +179,20 @@ impl Plugin for DropsPlugin {
             .init_resource::<DropDice>()
             .add_message::<SpawnDrop>()
             .add_message::<Landed>()
+            .add_message::<Flash>()
             .add_message::<Painted>()
             .add_message::<Strike>()
+            .add_message::<Ignite>()
+            .add_message::<Douse>()
+            .add_message::<Afflict>()
+            .add_message::<Relieve>()
+            .add_message::<Harm>()
+            .add_message::<Spawn>()
+            .init_resource::<Frost>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (launch, fall, fade, place)
+                (launch, fall, glint, fade, place)
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -219,20 +229,76 @@ fn launch(mut commands: Commands, mut asked: MessageReader<SpawnDrop>, mut dice:
     }
 }
 
+#[derive(SystemParam)]
+pub struct Aftermath<'w> {
+    painted: MessageWriter<'w, Painted>,
+    landed: MessageWriter<'w, Landed>,
+    flashes: MessageWriter<'w, Flash>,
+    ignite: MessageWriter<'w, Ignite>,
+    douse: MessageWriter<'w, Douse>,
+    afflict: MessageWriter<'w, Afflict>,
+    relieve: MessageWriter<'w, Relieve>,
+    harm: MessageWriter<'w, Harm>,
+    spawn: MessageWriter<'w, Spawn>,
+}
+
+impl Aftermath<'_> {
+    fn send(&mut self, landing: Landing, cells: &mut Vec<TilePos>) {
+        cells.extend(landing.cells);
+        for (pos, strength) in landing.flashes {
+            self.flashes.write(Flash { pos, strength });
+        }
+        for pos in landing.ignite {
+            self.ignite.write(Ignite { pos });
+        }
+        for pos in landing.douse {
+            self.douse.write(Douse { pos });
+        }
+        for afflict in landing.afflict {
+            self.afflict.write(afflict);
+        }
+        for relieve in landing.relieve {
+            self.relieve.write(relieve);
+        }
+        for harm in landing.harm {
+            self.harm.write(harm);
+        }
+        for spawn in landing.spawn {
+            self.spawn.write(spawn);
+        }
+    }
+}
+
+pub fn crowd(pos: TilePos, others: &[TilePos]) -> usize {
+    let chunk = |at: TilePos| (at.x / land::CHUNK_SIZE, at.y / land::CHUNK_SIZE);
+    let (cx, cy) = chunk(pos);
+
+    others
+        .iter()
+        .filter(|at| {
+            let (x, y) = chunk(**at);
+            x.abs_diff(cx) <= 1 && y.abs_diff(cy) <= 1
+        })
+        .count()
+}
+
 fn fall(
     mut commands: Commands,
     frames: Res<Frames>,
     clock: Res<WorldClock>,
+    census: Option<Res<Census>>,
     mut dice: ResMut<DropDice>,
+    mut frost: ResMut<Frost>,
     mut map: ResMut<TileMap>,
     mut drops: Query<(Entity, &mut Falling)>,
-    mut painted: MessageWriter<Painted>,
-    mut strikes: MessageWriter<Strike>,
-    mut landed: MessageWriter<Landed>,
+    creatures: Query<&Transform, With<Creature>>,
+    mut aftermath: Aftermath,
 ) {
     let dt = clock.step();
     let mut cells = Vec::new();
     let mut down = Vec::new();
+    let census = census.map(|census| *census).unwrap_or_default();
+    let mut others: Option<Vec<TilePos>> = None;
 
     for _ in 0..frames.due {
         for (entity, mut drop) in &mut drops {
@@ -251,40 +317,76 @@ fn fall(
                 continue;
             };
 
-            let landing = land::land(drop.kind, &map, pos, &mut dice.0);
-            for (cell, tile) in landing.changes {
-                map.set(cell.x, cell.y, tile);
-                cells.push(cell);
-            }
-            for strike in landing.strikes {
-                strikes.write(strike);
-            }
+            let near = if drop.kind == DropKind::LifeSeed {
+                let others = others.get_or_insert_with(|| {
+                    creatures
+                        .iter()
+                        .filter_map(|transform| tile_of(&map, transform.translation.truncate()))
+                        .collect()
+                });
+                crowd(pos, others)
+            } else {
+                0
+            };
 
-            landed.write(Landed {
+            let landing = land::land(
+                drop.kind,
+                &mut map,
+                &mut frost,
+                pos,
+                &census,
+                near,
+                &mut dice.0,
+            );
+            aftermath.send(landing, &mut cells);
+            aftermath.landed.write(Landed {
                 kind: drop.kind,
                 pos,
             });
-            commands.spawn((
-                Flash {
-                    pos,
-                    state: FLASH_STATE,
-                },
-                Sprite {
-                    color: Color::NONE,
-                    custom_size: Some(Vec2::splat(TILE_SIZE)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 0.0, FLASH_LAYER),
-            ));
+            aftermath.flashes.write(Flash {
+                pos,
+                strength: FLASH_STATE,
+            });
         }
     }
 
     if !cells.is_empty() {
-        painted.write(Painted::new(cells));
+        aftermath.painted.write(Painted::new(cells));
     }
 }
 
-fn fade(mut commands: Commands, frames: Res<Frames>, mut flashes: Query<(Entity, &mut Flash)>) {
+fn glint(mut commands: Commands, mut asked: MessageReader<Flash>, mut glints: Query<&mut Glint>) {
+    let mut fresh: Vec<Glint> = Vec::new();
+
+    for flash in asked.read() {
+        let state = flash.strength.min(FLASH_SHADES - 1);
+
+        if let Some(mut glint) = glints.iter_mut().find(|glint| glint.pos == flash.pos) {
+            glint.state = glint.state.max(state);
+        } else if let Some(glint) = fresh.iter_mut().find(|glint| glint.pos == flash.pos) {
+            glint.state = glint.state.max(state);
+        } else {
+            fresh.push(Glint {
+                pos: flash.pos,
+                state,
+            });
+        }
+    }
+
+    for glint in fresh {
+        commands.spawn((
+            glint,
+            Sprite {
+                color: Color::NONE,
+                custom_size: Some(Vec2::splat(TILE_SIZE)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, FLASH_LAYER),
+        ));
+    }
+}
+
+fn fade(mut commands: Commands, frames: Res<Frames>, mut flashes: Query<(Entity, &mut Glint)>) {
     for (entity, mut flash) in &mut flashes {
         flash.state -= frames.due as i32;
 
@@ -298,8 +400,8 @@ fn place(
     bounds: Res<WorldBounds>,
     art: Res<DropArt>,
     map: Res<TileMap>,
-    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility), Without<Flash>>,
-    mut flashes: Query<(&Flash, &mut Sprite, &mut Transform), Without<Falling>>,
+    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility), Without<Glint>>,
+    mut flashes: Query<(&Glint, &mut Sprite, &mut Transform), Without<Falling>>,
 ) {
     let origin = -bounds.half();
 
@@ -409,13 +511,13 @@ mod tests {
 
     #[test]
     fn a_landing_flash_fades_from_a_quarter_white_to_nothing() {
-        let flash = Flash {
+        let flash = Glint {
             pos: TilePos::new(0, 0),
             state: FLASH_STATE,
         };
 
         assert!((flash.alpha() - 14.0 / 30.0 * 0.5).abs() < 1e-6);
-        assert_eq!(Flash { state: 0, ..flash }.alpha(), 0.0);
+        assert_eq!(Glint { state: 0, ..flash }.alpha(), 0.0);
     }
 
     #[test]
