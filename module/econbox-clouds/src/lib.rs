@@ -636,8 +636,9 @@ mod tests {
     }
 
     #[test]
-    fn rain_clouds_soak_the_sand_under_their_shadow() {
+    fn rain_clouds_cool_the_lava_under_their_shadow() {
         let mut app = app(64);
+        app.insert_resource(TileMap::filled(64, 64, Tile::bare(Ground::Lava3)));
         app.world_mut().write_message(SpawnCloud {
             kind: CloudKind::Rain,
             pos: TilePos::new(5, 32),
@@ -645,13 +646,14 @@ mod tests {
         seconds(&mut app, 6.0);
 
         let map = app.world().resource::<TileMap>();
-        let wet: Vec<u32> = (0..map.height)
-            .filter(|&y| (0..map.width).any(|x| map.at(x, y).ground == Ground::SoilLow))
+        let cooled: Vec<u32> = (0..map.height)
+            .filter(|&y| (0..map.width).any(|x| map.at(x, y).ground == Ground::Hills))
             .collect();
 
-        assert!(!wet.is_empty());
-        assert!(wet.iter().all(|y| y.abs_diff(32) <= 11), "{wet:?}");
+        assert!(!cooled.is_empty());
+        assert!(cooled.iter().all(|y| y.abs_diff(32) <= 11), "{cooled:?}");
     }
+
 
     #[test]
     fn the_sky_holds_at_most_two_hundred_clouds() {

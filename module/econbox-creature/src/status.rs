@@ -223,6 +223,14 @@ pub struct Afflict {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
+pub struct Harm {
+    pub centre: TilePos,
+    pub reach: f32,
+    pub amount: f32,
+    pub chance: f32,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq)]
 pub struct Relieve {
     pub centre: TilePos,
     pub reach: f32,

@@ -13,7 +13,7 @@ use econbox_tilemap::{TileMap, TilePos};
 
 pub mod status;
 
-pub use status::{Active, Afflict, Relieve, STATUSES, Status, Statuses};
+pub use status::{Active, Afflict, Harm, Relieve, STATUSES, Status, Statuses};
 
 pub const CREATURE_LAYER: f32 = 1.0;
 pub const FROZEN_TINT: [f32; 3] = [0.62, 0.86, 1.0];
@@ -999,11 +999,13 @@ impl Plugin for CreaturePlugin {
             .add_message::<Strike>()
             .add_message::<Afflict>()
             .add_message::<Relieve>()
+            .add_message::<Harm>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
                 (
-                    place, roam, live, smite, afflict, relieve, endure, strand, reap, count, tint,
+                    place, roam, live, smite, harm, afflict, relieve, endure, strand, reap, count,
+                    tint,
                 )
                     .chain()
                     .run_if(resource_exists::<TileMap>),
@@ -1216,7 +1218,13 @@ fn afflict(
                 .and_then(|pos| map.get(pos))
                 .is_some_and(Tile::is_lava);
 
-            if request.status == Status::Frozen && on_lava {
+            let on_water = tile_of(&map, here)
+                .and_then(|pos| map.get(pos))
+                .is_some_and(Tile::is_water);
+
+            if (request.status == Status::Frozen && on_lava)
+                || (request.status == Status::Burning && on_water)
+            {
                 continue;
             }
 
@@ -1230,6 +1238,26 @@ fn afflict(
                         commands.entity(entity).insert(statuses);
                     }
                 }
+            }
+        }
+    }
+}
+
+fn harm(
+    mut asked: MessageReader<Harm>,
+    map: Res<TileMap>,
+    mut fate: ResMut<Fate>,
+    mut creatures: Query<(&mut Creature, &Transform)>,
+) {
+    for request in asked.read() {
+        let centre = centre_of(&map, request.centre);
+        let reach = (request.reach + 0.5) * TILE_SIZE;
+
+        for (mut creature, transform) in &mut creatures {
+            if transform.translation.truncate().distance(centre) <= reach
+                && fate.0.random_chance(request.chance)
+            {
+                creature.suffer(Effect::Hurt(request.amount.max(1.0)));
             }
         }
     }

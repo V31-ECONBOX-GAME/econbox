@@ -2619,6 +2619,7 @@ dependencies = [
  "econbox-clock",
  "econbox-creature",
  "econbox-noise",
+ "econbox-temperature",
  "econbox-tile",
  "econbox-tilemap",
 ]

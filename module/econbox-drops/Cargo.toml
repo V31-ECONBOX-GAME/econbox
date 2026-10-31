@@ -11,6 +11,7 @@ econbox-camera = { workspace = true }
 econbox-clock = { workspace = true }
 econbox-creature = { workspace = true }
 econbox-noise = { workspace = true }
+econbox-temperature = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 
