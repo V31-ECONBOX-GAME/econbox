@@ -1,4 +1,4 @@
-//! The map camera, ported from WorldBox's MoveCamera: wheel and key zoom, right or middle button drag with glide, key panning, focus and follow.
+//! The map camera, ported from WorldBox's MoveCamera: wheel and key zoom, right or middle button drag with glide (left too while nothing is selected), key panning, focus and follow.
 
 mod focus;
 mod pan;
@@ -245,11 +245,11 @@ fn steer(
             break 'update;
         }
 
-        let drag_buttons = [MouseButton::Right, MouseButton::Middle];
+        let drag = drag_buttons(panning.can_drag_map);
         let viewport = Vec2::new(window.width(), window.height());
         let input = DragInput {
-            pressed: buttons.any_just_pressed(drag_buttons),
-            held: buttons.any_pressed(drag_buttons),
+            pressed: buttons.any_just_pressed(drag.clone()),
+            held: buttons.any_pressed(drag),
             over_ui: over_ui.0,
             pointer: window
                 .cursor_position()
@@ -258,7 +258,9 @@ fn steer(
         panning.drag(&mut position, input, map, frame);
 
         if !lock.active {
-            panning.glide(&mut position, buttons.pressed(MouseButton::Right), map, dt);
+            let holding = buttons.pressed(MouseButton::Right)
+                || (panning.can_drag_map && buttons.pressed(MouseButton::Left));
+            panning.glide(&mut position, holding, map, dt);
         }
     }
 
@@ -267,6 +269,13 @@ fn steer(
         transform.translation.x = next.x;
         transform.translation.y = next.y;
     }
+}
+
+pub fn drag_buttons(can_drag_map: bool) -> impl Iterator<Item = MouseButton> + Clone {
+    let count = if can_drag_map { 3 } else { 2 };
+    [MouseButton::Right, MouseButton::Middle, MouseButton::Left]
+        .into_iter()
+        .take(count)
 }
 
 fn hotkeys(

@@ -213,6 +213,11 @@ fn camera_script() -> Vec<Step> {
         Shot("c06-released"),
         Wait(60),
         Shot("c07-after-glide"),
+        Drag(Window(0.0, 60.0), Window(120.0, 60.0)),
+        Wait(1),
+        Shot("c08-left-dragged"),
+        Wait(60),
+        Shot("c09-left-glide"),
         Wait(10),
     ]);
     steps

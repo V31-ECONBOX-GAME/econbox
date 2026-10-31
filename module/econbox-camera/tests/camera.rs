@@ -146,8 +146,39 @@ fn a_right_drag_keeps_the_grabbed_spot_under_the_pointer_then_glides() {
 }
 
 #[test]
-fn the_left_button_never_drags_the_map() {
+fn a_left_drag_with_nothing_selected_moves_the_map_like_the_right_button() {
     let (mut app, window) = app(256);
+    let start = Vec2::new(620.0, 300.0);
+
+    point(&mut app, window, start);
+    app.update();
+    let grabbed = under(&mut app, start);
+
+    button(&mut app, window, MouseButton::Left, ButtonState::Pressed);
+    app.update();
+
+    for step in 1..=10 {
+        let at = start + Vec2::new(-12.0 * step as f32, 4.0 * step as f32);
+        point(&mut app, window, at);
+        app.update();
+        let spot = under(&mut app, at);
+        assert!(spot.distance(grabbed) < 1e-2, "{step}: {spot} vs {grabbed}");
+    }
+
+    let held = centre(&mut app);
+    button(&mut app, window, MouseButton::Left, ButtonState::Released);
+    for _ in 0..60 {
+        app.update();
+    }
+
+    assert!(held.x > 0.0, "{held}");
+    assert!((centre(&mut app) - held).length() > 0.0);
+}
+
+#[test]
+fn the_left_button_never_drags_the_map_while_a_power_is_selected() {
+    let (mut app, window) = app(256);
+    app.world_mut().resource_mut::<Panning>().can_drag_map = false;
     let start = Vec2::new(620.0, 300.0);
 
     point(&mut app, window, start);
