@@ -26,6 +26,18 @@ pub fn ocean() -> Color {
     Color::srgb_u8(r, g, b)
 }
 
+pub fn fresh_seed() -> u32 {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|time| time.as_nanos())
+        .unwrap_or_default();
+    let mut seed = (nanos ^ (nanos >> 32)) as u32;
+    seed ^= seed >> 16;
+    seed = seed.wrapping_mul(0x7feb_352d);
+    seed ^= seed >> 15;
+    seed.wrapping_mul(0x846c_a68b) | 1
+}
+
 pub fn app() -> App {
     app_with(&properties::load().expect("load properties"))
 }
@@ -52,6 +64,7 @@ pub fn app_with(source: &Config) -> App {
         .insert_resource(bar)
         .insert_resource(options)
         .insert_resource(file)
+        .insert_resource(WorldSeed(fresh_seed()))
         .add_plugins((
             CameraPlugin,
             ClockPlugin,

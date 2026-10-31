@@ -276,6 +276,7 @@ fn main() {
     std::fs::create_dir_all(&out).expect("make tour folder");
 
     let mut app = desktop::app();
+    app.insert_resource(econbox_tileview::WorldSeed::default());
     app.insert_resource(Tour {
         steps: script(),
         at: 0,

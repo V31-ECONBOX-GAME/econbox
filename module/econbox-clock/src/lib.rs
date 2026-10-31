@@ -63,6 +63,7 @@ pub const TICK: f32 = 0.2;
 pub const FRAME: f32 = 1.0 / 60.0;
 pub const STEP: f32 = 0.02;
 pub const CATCH_UP: u32 = 4;
+pub const PACE: f32 = STEP / FRAME;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct WorldClock {
@@ -124,7 +125,7 @@ impl WorldClock {
     }
 
     pub fn advance(&mut self, seconds: f32) {
-        self.elapsed += seconds * self.rate();
+        self.elapsed += seconds * self.rate() * PACE;
         self.ticks = (self.elapsed / TICK) as u64;
     }
 
@@ -181,12 +182,12 @@ fn frame(time: Res<Time>, mut frames: ResMut<Frames>) {
     frames.advance(time.delta_secs());
 }
 
-fn advance(time: Res<Time>, mut clock: ResMut<WorldClock>) {
-    if clock.rate() == 0.0 {
+fn advance(frames: Res<Frames>, mut clock: ResMut<WorldClock>) {
+    if clock.rate() == 0.0 || frames.due == 0 {
         return;
     }
 
-    clock.advance(time.delta_secs());
+    clock.advance(frames.due as f32 * FRAME);
 }
 
 #[cfg(test)]
@@ -300,23 +301,23 @@ mod tests {
     #[test]
     fn ticks_count_the_elapsed_world_seconds() {
         let mut clock = WorldClock::default();
-        clock.advance(1.0);
+        clock.advance(TICK * 5.0 / PACE);
 
-        assert_eq!(clock.ticks, (1.0 / TICK) as u64);
+        assert_eq!(clock.ticks, 5);
 
-        clock.advance(TICK);
-        assert_eq!(clock.ticks, (1.0 / TICK) as u64 + 1);
+        clock.advance(TICK / PACE);
+        assert_eq!(clock.ticks, 6);
     }
 
     #[test]
-    fn many_small_steps_add_up_to_the_same_stretch_of_time() {
+    fn a_real_second_moves_the_world_by_one_point_two_seconds_like_worldbox() {
         let mut clock = WorldClock::default();
 
-        for _ in 0..100 {
-            clock.advance(0.01);
+        for _ in 0..60 {
+            clock.advance(FRAME);
         }
 
-        assert!((clock.elapsed - 1.0).abs() < 1e-3, "{}", clock.elapsed);
+        assert!((clock.elapsed - 1.2).abs() < 1e-3, "{}", clock.elapsed);
     }
 
     #[test]

@@ -38,6 +38,9 @@ pub struct Ignite {
     pub pos: TilePos,
 }
 
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct NewWorld;
+
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Douse {
     pub pos: TilePos,

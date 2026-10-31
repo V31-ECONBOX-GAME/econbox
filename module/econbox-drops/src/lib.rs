@@ -14,7 +14,7 @@ use econbox_clock::{Frames, WorldClock};
 use econbox_creature::{Afflict, Census, Creature, Harm, Relieve, Spawn, Strike, tile_of};
 use econbox_noise::Randy;
 use econbox_temperature::Frost;
-use econbox_tilemap::{Douse, Flash, Ignite, Painted, TileMap, TilePos};
+use econbox_tilemap::{Douse, Flash, Ignite, NewWorld, Painted, TileMap, TilePos};
 use kind::{DROP_SCALE, FALLING_HEIGHT, FALLING_SPEED_RANDOM};
 
 pub const DROP_LAYER: f32 = 4.3;
@@ -169,6 +169,19 @@ pub fn spot_tile(spot: IVec2, width: u32, height: u32) -> Option<TilePos> {
     inside.then(|| TilePos::new(spot.x as u32, height - 1 - spot.y as u32))
 }
 
+fn sweep(
+    mut commands: Commands,
+    mut fresh: MessageReader<NewWorld>,
+    left: Query<Entity, Or<(With<Falling>, With<Glint>)>>,
+) {
+    if fresh.read().count() == 0 {
+        return;
+    }
+    for entity in &left {
+        commands.entity(entity).despawn();
+    }
+}
+
 pub struct DropsPlugin;
 
 impl Plugin for DropsPlugin {
@@ -188,11 +201,12 @@ impl Plugin for DropsPlugin {
             .add_message::<Relieve>()
             .add_message::<Harm>()
             .add_message::<Spawn>()
+            .add_message::<NewWorld>()
             .init_resource::<Frost>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (launch, fall, glint, fade, place)
+                (sweep, launch, fall, glint, fade, place)
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );

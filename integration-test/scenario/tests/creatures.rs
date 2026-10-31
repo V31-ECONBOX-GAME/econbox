@@ -233,6 +233,9 @@ fn holding_the_button_with_a_spawn_tool_drops_a_creature_where_the_pointer_is() 
         .insert_resource(buttons);
 
     app.update();
+    app.world_mut()
+        .resource_mut::<ButtonInput<MouseButton>>()
+        .clear();
     app.update();
 
     let alive = creatures(&mut app);

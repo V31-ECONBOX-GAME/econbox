@@ -8,7 +8,7 @@ use econbox_clock::WorldClock;
 use econbox_creature::{Census, Kind};
 use econbox_tilemap::TileMap;
 
-pub const MONTH: f32 = 6.0;
+pub const MONTH: f32 = 5.0;
 pub const MONTHS: u32 = 12;
 
 const CALENDAR: Color = Color::srgb(0.0, 1.0, 0.8213);

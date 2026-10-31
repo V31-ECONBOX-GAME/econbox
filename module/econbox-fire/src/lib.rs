@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use econbox_age::{AgeAsset, Ages, Dice, Particles};
 use econbox_clock::{Frames, WorldClock};
 use econbox_tile::Overlay;
-use econbox_tilemap::{Ignite, Painted, TileMap, TilePos};
+use econbox_tilemap::{Douse, Ignite, Painted, TileMap, TilePos};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const FIRE_SPREAD_TIME: f64 = 2.0;
@@ -261,6 +261,12 @@ impl Fires {
         }
     }
 
+    pub fn remove_burn(&mut self, index: u32) {
+        if self.burned.remove(&index).is_some() {
+            self.changed.insert(index);
+        }
+    }
+
     pub fn update(&mut self, map: &mut TileMap, elapsed: f32, age: &AgeAsset) {
         self.fit(map);
         self.time += f64::from(elapsed);
@@ -377,9 +383,10 @@ impl Plugin for FirePlugin {
         app.init_resource::<Fires>()
             .init_resource::<Frames>()
             .add_message::<Ignite>()
+            .add_message::<Douse>()
             .add_message::<Painted>()
             .add_systems(First, settle)
-            .add_systems(Update, (forget, ignite, advance).chain());
+            .add_systems(Update, (forget, ignite, douse, advance).chain());
     }
 }
 
@@ -427,6 +434,23 @@ fn ignite(
     let edited = fires.take_edited();
     if !edited.is_empty() {
         painted.write(Painted::new(edited));
+    }
+}
+
+fn douse(mut asked: MessageReader<Douse>, map: Option<Res<TileMap>>, mut fires: ResMut<Fires>) {
+    let Some(map) = map else {
+        asked.clear();
+        return;
+    };
+    fires.fit(&map);
+    for request in asked.read() {
+        let TilePos { x, y } = request.pos;
+        if x >= map.width || y >= map.height {
+            continue;
+        }
+        let index = fires.index(x, y);
+        fires.stop_fire(&map, index);
+        fires.remove_burn(index);
     }
 }
 
@@ -653,5 +677,23 @@ mod tests {
         app.update();
         let fires = app.world().resource::<Fires>();
         assert!(fires.changed.is_empty() && fires.flashes.is_empty());
+    }
+
+    #[test]
+    fn rain_puts_the_fire_out_and_washes_the_scorch_away() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(FirePlugin)
+            .insert_resource(TileMap::filled(4, 4, Tile::bare(Ground::Sand)));
+        let pos = TilePos::new(1, 1);
+        app.world_mut().write_message(Ignite { pos });
+        app.update();
+        assert!(app.world().resource::<Fires>().on_fire(1, 1));
+
+        app.world_mut().write_message(Douse { pos });
+        app.update();
+        let fires = app.world().resource::<Fires>();
+        assert!(!fires.on_fire(1, 1));
+        assert_eq!(fires.burned_stage(1, 1), 0);
     }
 }

@@ -5,7 +5,7 @@ use econbox_age::WorldAge;
 use econbox_clock::{Frames, WorldClock};
 use econbox_noise::Randy;
 use econbox_tile::Ground;
-use econbox_tilemap::{Flash, Painted, TileMap, TilePos};
+use econbox_tilemap::{Flash, NewWorld, Painted, TileMap, TilePos};
 
 pub const TILE_HEALTH: i32 = 10;
 pub const FAST_FREEZE_ODDS: f32 = 0.35;
@@ -338,7 +338,19 @@ impl Plugin for TemperaturePlugin {
             .init_resource::<TemperatureLaws>()
             .add_message::<Painted>()
             .add_message::<Flash>()
-            .add_systems(Update, temper.run_if(resource_exists::<TileMap>));
+            .add_message::<NewWorld>()
+            .add_systems(
+                Update,
+                (thaw_all, temper)
+                    .chain()
+                    .run_if(resource_exists::<TileMap>),
+            );
+    }
+}
+
+fn thaw_all(mut fresh: MessageReader<NewWorld>, mut frost: ResMut<Frost>) {
+    if fresh.read().count() > 0 {
+        *frost = Frost::default();
     }
 }
 

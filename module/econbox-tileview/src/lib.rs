@@ -21,7 +21,7 @@ use bevy::sprite_render::Material2dPlugin;
 use econbox_age::Ages;
 use econbox_camera::WorldBounds;
 use econbox_fire::Fires;
-use econbox_tilemap::Painted;
+use econbox_tilemap::{NewWorld, Painted};
 use econbox_worldgen::{WorldConfig, generate};
 
 pub use ambience::{Ambience, AmbiencePlugin, LightBlob, LightBlobs};
@@ -76,6 +76,7 @@ impl Plugin for TileViewPlugin {
         .init_resource::<Drawn>()
         .add_message::<Regenerate>()
         .add_message::<Painted>()
+        .add_message::<NewWorld>()
         .add_systems(Startup, (spawn, view::spawn_layers, border::spawn))
         .add_systems(
             Update,
@@ -108,6 +109,7 @@ fn spawn(
     seed: Res<WorldSeed>,
     ages: Option<ResMut<Ages>>,
     fires: Option<ResMut<Fires>>,
+    mut fresh: MessageWriter<NewWorld>,
 ) {
     let map = generate(WorldConfig {
         seed: seed.0,
@@ -121,6 +123,7 @@ fn spawn(
         fires.clear();
     }
 
+    fresh.write(NewWorld);
     commands.insert_resource(map);
 }
 
@@ -132,6 +135,7 @@ fn rebuild(
     settings: Res<WorldSettings>,
     ages: Option<ResMut<Ages>>,
     fires: Option<ResMut<Fires>>,
+    mut fresh: MessageWriter<NewWorld>,
 ) {
     let Some(request) = asked.read().last().copied() else {
         return;
@@ -151,6 +155,7 @@ fn rebuild(
         fires.clear();
     }
 
+    fresh.write(NewWorld);
     commands.insert_resource(map);
 }
 

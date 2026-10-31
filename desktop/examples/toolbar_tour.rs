@@ -230,6 +230,7 @@ fn newworld_script() -> Vec<Step> {
     let islands = Window(27.0, 13.3);
     let create = Window(0.0, -134.0);
     vec![
+        Resize(1240.0, 719.0),
         Wait(90),
         Shot("n01-start"),
         Point(Button(TabId::Main, "custom_world_button")),
@@ -640,6 +641,7 @@ fn main() {
     std::fs::create_dir_all(&out).expect("make tour folder");
 
     let mut app = desktop::app();
+    app.insert_resource(econbox_tileview::WorldSeed::default());
     app.insert_resource(Tour {
         steps: script(),
         at: 0,

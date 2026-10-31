@@ -2585,6 +2585,7 @@ dependencies = [
  "econbox-drops",
  "econbox-tile",
  "econbox-tilemap",
+ "econbox-tileview",
 ]
 
 [[package]]

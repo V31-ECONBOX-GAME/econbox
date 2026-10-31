@@ -21,7 +21,8 @@ use econbox_creature::Strike;
 use econbox_cursor::Hovered;
 use econbox_drops::SpawnDrop;
 use econbox_tile::Ground;
-use econbox_tilemap::{Painted, TileMap, TilePos};
+use econbox_tilemap::{NewWorld, Painted, TileMap, TilePos};
+use econbox_tileview::{LightBlob, LightBlobs, Night};
 use std::collections::HashSet;
 
 pub const SHADOW_LAYER: f32 = 4.0;
@@ -141,11 +142,12 @@ impl Plugin for CloudsPlugin {
             .init_resource::<Sky>()
             .init_resource::<CloudArt>()
             .add_message::<SpawnCloud>()
+            .add_message::<NewWorld>()
             .add_message::<SpawnDrop>()
             .add_message::<Painted>()
             .add_message::<Strike>()
             .add_systems(Startup, draw)
-            .add_systems(Update, (renew, weather, cap, sponge, place).chain());
+            .add_systems(Update, (clear, renew, weather, cap, sponge, place).chain());
     }
 }
 
@@ -156,6 +158,22 @@ fn draw(images: Option<ResMut<Assets<Image>>>, mut art: ResMut<CloudArt>) {
         .into_iter()
         .map(|puff| (puff, images.add(art::image(puff))))
         .collect();
+}
+
+fn clear(
+    mut commands: Commands,
+    mut fresh: MessageReader<NewWorld>,
+    age: Res<WorldAge>,
+    mut sky: ResMut<Sky>,
+    clouds: Query<Entity, With<Cloud>>,
+) {
+    if fresh.read().count() == 0 {
+        return;
+    }
+    for entity in &clouds {
+        commands.entity(entity).despawn();
+    }
+    sky.timer = age.0.cloud_interval();
 }
 
 fn renew(
@@ -429,13 +447,27 @@ fn tinted(color: [u8; 3], tone: [u8; 3]) -> [u8; 3] {
     [0, 1, 2].map(|i| ((color[i] as u32 * tone[i] as u32) / 255) as u8)
 }
 
+pub const LIGHT_SIZE: f32 = 4.0;
+
 fn place(
     bounds: Res<WorldBounds>,
+    night: Option<Res<Night>>,
+    mut blobs: Option<ResMut<LightBlobs>>,
     mut clouds: Query<(&Cloud, &mut Transform, &mut Sprite, &mut Visibility), Without<CloudShadow>>,
     mut shadows: Query<(&ChildOf, &mut Sprite), With<CloudShadow>>,
 ) {
     let origin = -bounds.half();
     let sea = Ground::DeepOcean.color();
+    let [dim_r, dim_g, dim_b] = night.map(|night| night.tint()).unwrap_or([1.0; 3]);
+    let dim = |color: Color| {
+        let lit = color.to_srgba();
+        Color::srgba(
+            lit.red * dim_r,
+            lit.green * dim_g,
+            lit.blue * dim_b,
+            lit.alpha,
+        )
+    };
 
     for (cloud, mut transform, mut sprite, mut visibility) in &mut clouds {
         let lift = (cloud.serial % STACKED) as f32 * STACK;
@@ -445,9 +477,18 @@ fn place(
         let [r, g, b] = cloud.kind.color();
         let face = tinted(cloud.kind.color(), art::TONES[1]);
         let alpha = gamma_alpha(face, sea, cloud.alpha);
-        sprite.color = Color::srgba_u8(r, g, b, 255).with_alpha(alpha);
+        sprite.color = dim(Color::srgba_u8(r, g, b, 255).with_alpha(alpha));
         sprite.flip_x = cloud.flip;
         *visibility = Visibility::Inherited;
+
+        if cloud.kind.glows()
+            && let Some(blobs) = blobs.as_mut()
+        {
+            blobs.0.push(LightBlob {
+                pos: at,
+                radius: LIGHT_SIZE,
+            });
+        }
     }
 
     for (parent, mut sprite) in &mut shadows {
@@ -458,7 +499,7 @@ fn place(
         let [r, g, b] = SHADOW_COLOR;
         let face = tinted(SHADOW_COLOR, art::TONES[1]);
         let alpha = gamma_alpha(face, sea, cloud.alpha * SHADOW_SHARE);
-        sprite.color = Color::srgba_u8(r, g, b, 255).with_alpha(alpha);
+        sprite.color = dim(Color::srgba_u8(r, g, b, 255).with_alpha(alpha));
         sprite.flip_x = cloud.flip;
     }
 }
@@ -764,5 +805,37 @@ mod tests {
         view.area = Rect::new(0.0, 0.0, 300.0 * TILE_SIZE, 200.0 * TILE_SIZE);
 
         assert_eq!(ortho(&Projection::Orthographic(view)), Some(100.0));
+    }
+
+    #[test]
+    fn fire_clouds_light_the_night_and_every_cloud_darkens_with_it() {
+        let mut app = app(64);
+        app.init_resource::<LightBlobs>()
+            .insert_resource(Night(0.6));
+        app.world_mut().resource_mut::<WorldClock>().paused = true;
+        for (kind, x) in [(CloudKind::Fire, 10), (CloudKind::Rain, 40)] {
+            app.world_mut().write_message(SpawnCloud {
+                kind,
+                pos: TilePos::new(x, 20),
+            });
+        }
+        app.update();
+        app.update();
+
+        let blobs = app.world().resource::<LightBlobs>();
+        assert!(!blobs.0.is_empty());
+        assert!(blobs.0.iter().all(|blob| blob.radius == LIGHT_SIZE));
+
+        let rain = app
+            .world_mut()
+            .query::<(&Cloud, &Sprite)>()
+            .iter(app.world())
+            .find(|(cloud, _)| cloud.kind == CloudKind::Rain)
+            .map(|(_, sprite)| sprite.color.to_srgba())
+            .unwrap();
+        let [r, g, b] = CloudKind::Rain.color();
+        assert!(rain.red < r as f32 / 255.0 * 0.5);
+        assert!(rain.green < g as f32 / 255.0 * 0.5);
+        assert!(rain.blue <= b as f32 / 255.0);
     }
 }

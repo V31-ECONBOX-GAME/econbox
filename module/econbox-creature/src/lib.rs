@@ -9,7 +9,7 @@ use econbox_camera::TILE_SIZE;
 use econbox_clock::WorldClock;
 use econbox_noise::Randy;
 use econbox_tile::Tile;
-use econbox_tilemap::{TileMap, TilePos};
+use econbox_tilemap::{NewWorld, TileMap, TilePos};
 
 pub mod status;
 
@@ -1000,12 +1000,13 @@ impl Plugin for CreaturePlugin {
             .add_message::<Afflict>()
             .add_message::<Relieve>()
             .add_message::<Harm>()
+            .add_message::<NewWorld>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
                 (
-                    place, roam, live, smite, harm, afflict, relieve, endure, strand, reap, count,
-                    tint,
+                    forget, place, roam, live, smite, harm, afflict, relieve, endure, strand, reap,
+                    count, tint,
                 )
                     .chain()
                     .run_if(resource_exists::<TileMap>),
@@ -1354,6 +1355,21 @@ fn reap(mut commands: Commands, creatures: Query<(Entity, &Creature)>, mut censu
             census.deaths += 1;
         }
     }
+}
+
+fn forget(
+    mut commands: Commands,
+    mut fresh: MessageReader<NewWorld>,
+    creatures: Query<Entity, With<Creature>>,
+    mut census: ResMut<Census>,
+) {
+    if fresh.read().count() == 0 {
+        return;
+    }
+    for entity in &creatures {
+        commands.entity(entity).despawn();
+    }
+    *census = Census::default();
 }
 
 fn count(creatures: Query<&Creature>, mut census: ResMut<Census>) {
@@ -1821,5 +1837,35 @@ mod tests {
         });
         app.update();
         assert!(!statuses(&mut app)[0].has(Status::Frozen));
+    }
+
+    #[test]
+    fn a_new_world_sends_every_creature_away_and_clears_the_census() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(CreaturePlugin)
+            .init_resource::<WorldClock>()
+            .insert_resource(map());
+        app.update();
+        app.world_mut().write_message(Spawn {
+            species: Species::Sheep,
+            pos: TilePos::new(2, 2),
+        });
+        app.update();
+        assert_eq!(app.world().resource::<Census>().alive, 1);
+
+        app.world_mut().write_message(NewWorld);
+        app.update();
+        app.update();
+
+        let census = app.world().resource::<Census>();
+        assert_eq!(census.alive, 0);
+        assert_eq!(census.deaths, 0);
+        let left = app
+            .world_mut()
+            .query::<&Creature>()
+            .iter(app.world())
+            .count();
+        assert_eq!(left, 0);
     }
 }
