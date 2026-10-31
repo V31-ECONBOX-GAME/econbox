@@ -2594,6 +2594,7 @@ dependencies = [
  "econbox-art",
  "econbox-camera",
  "econbox-clock",
+ "econbox-noise",
  "econbox-tile",
  "econbox-tilemap",
 ]

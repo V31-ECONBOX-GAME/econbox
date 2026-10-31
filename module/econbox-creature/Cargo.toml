@@ -9,6 +9,7 @@ bevy = { workspace = true, features = ["2d"] }
 econbox-art = { workspace = true }
 econbox-camera = { workspace = true }
 econbox-clock = { workspace = true }
+econbox-noise = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 

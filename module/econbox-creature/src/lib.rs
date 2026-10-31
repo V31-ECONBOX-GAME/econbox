@@ -7,10 +7,17 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use econbox_art::{Mark, SPRITE, Skin, Stance, atlas, sprite};
 use econbox_camera::TILE_SIZE;
 use econbox_clock::WorldClock;
+use econbox_noise::Randy;
 use econbox_tile::Tile;
 use econbox_tilemap::{TileMap, TilePos};
 
+pub mod status;
+
+pub use status::{Active, Afflict, Relieve, STATUSES, Status, Statuses};
+
 pub const CREATURE_LAYER: f32 = 1.0;
+pub const FROZEN_TINT: [f32; 3] = [0.62, 0.86, 1.0];
+pub const BURNING_TINT: [f32; 3] = [1.0, 0.7, 0.5];
 pub const WANDER_REACH: u32 = 6;
 pub const STARVING: f32 = 0.0;
 pub const DROWN_RATE: f32 = 8.0;
@@ -987,12 +994,17 @@ pub struct CreaturePlugin;
 impl Plugin for CreaturePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Census>()
+            .init_resource::<Fate>()
             .add_message::<Spawn>()
             .add_message::<Strike>()
+            .add_message::<Afflict>()
+            .add_message::<Relieve>()
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (place, roam, live, smite, strand, reap, count)
+                (
+                    place, roam, live, smite, afflict, relieve, endure, strand, reap, count, tint,
+                )
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -1058,6 +1070,7 @@ fn place(
 
         commands.spawn((
             Creature::new(request.species),
+            Statuses::default(),
             Wander {
                 target: at,
                 rest: 0.0,
@@ -1072,7 +1085,7 @@ fn roam(
     time: Res<Time>,
     clock: Res<WorldClock>,
     map: Res<TileMap>,
-    mut wanderers: Query<(&Creature, &mut Wander, &mut Transform)>,
+    mut wanderers: Query<(&Creature, Option<&Statuses>, &mut Wander, &mut Transform)>,
 ) {
     let rate = clock.rate();
 
@@ -1082,7 +1095,13 @@ fn roam(
 
     let step = time.delta_secs() * rate;
 
-    for (creature, mut wander, mut transform) in &mut wanderers {
+    for (creature, statuses, mut wander, mut transform) in &mut wanderers {
+        let pace = statuses.map_or(1.0, Statuses::speed);
+
+        if pace == 0.0 {
+            continue;
+        }
+
         let here = transform.translation.truncate();
         wander.rest -= step;
 
@@ -1105,7 +1124,7 @@ fn roam(
         let toward = wander.target - here;
 
         if toward.length() > f32::EPSILON {
-            let move_by = toward.normalize() * creature.species.speed() * step;
+            let move_by = toward.normalize() * creature.species.speed() * pace * step;
             let next = if move_by.length() > toward.length() {
                 wander.target
             } else {
@@ -1163,6 +1182,111 @@ fn smite(
                 creature.suffer(strike.effect);
             }
         }
+    }
+}
+
+#[derive(Resource, Debug, Clone)]
+pub struct Fate(pub Randy);
+
+impl Default for Fate {
+    fn default() -> Self {
+        Self(Randy::new(0x000f_a7e5))
+    }
+}
+
+fn afflict(
+    mut commands: Commands,
+    mut asked: MessageReader<Afflict>,
+    map: Res<TileMap>,
+    mut fate: ResMut<Fate>,
+    mut creatures: Query<(Entity, &Transform, Option<&mut Statuses>), With<Creature>>,
+) {
+    for request in asked.read() {
+        let centre = centre_of(&map, request.centre);
+        let reach = (request.reach + 0.5) * TILE_SIZE;
+
+        for (entity, transform, statuses) in &mut creatures {
+            let here = transform.translation.truncate();
+
+            if here.distance(centre) > reach || !fate.0.random_chance(request.chance) {
+                continue;
+            }
+
+            let on_lava = tile_of(&map, here)
+                .and_then(|pos| map.get(pos))
+                .is_some_and(Tile::is_lava);
+
+            if request.status == Status::Frozen && on_lava {
+                continue;
+            }
+
+            match statuses {
+                Some(mut statuses) => {
+                    statuses.add(request.status);
+                }
+                None => {
+                    let mut statuses = Statuses::default();
+                    if statuses.add(request.status) {
+                        commands.entity(entity).insert(statuses);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn relieve(
+    mut asked: MessageReader<Relieve>,
+    map: Res<TileMap>,
+    mut creatures: Query<(&Transform, &mut Statuses), With<Creature>>,
+) {
+    for request in asked.read() {
+        let centre = centre_of(&map, request.centre);
+        let reach = (request.reach + 0.5) * TILE_SIZE;
+
+        for (transform, mut statuses) in &mut creatures {
+            if transform.translation.truncate().distance(centre) <= reach {
+                statuses.finish(request.status);
+            }
+        }
+    }
+}
+
+fn endure(
+    time: Res<Time>,
+    clock: Res<WorldClock>,
+    mut creatures: Query<(&mut Creature, &mut Statuses)>,
+) {
+    let rate = clock.rate();
+
+    if rate == 0.0 {
+        return;
+    }
+
+    let step = time.delta_secs() * rate;
+
+    for (mut creature, mut statuses) in &mut creatures {
+        let most = creature.species.health() * statuses.health();
+        let damage = statuses.tick(step, most);
+        creature.health = (creature.health - damage).min(most);
+    }
+}
+
+fn tint(mut creatures: Query<(&Statuses, &mut Sprite), Changed<Statuses>>) {
+    for (statuses, mut sprite) in &mut creatures {
+        if sprite.texture_atlas.is_none() {
+            continue;
+        }
+
+        let [r, g, b] = if statuses.has(Status::Frozen) {
+            FROZEN_TINT
+        } else if statuses.has(Status::Burning) {
+            BURNING_TINT
+        } else {
+            [1.0, 1.0, 1.0]
+        };
+
+        sprite.color = Color::srgb(r, g, b);
     }
 }
 
@@ -1621,5 +1745,53 @@ mod tests {
 
         creature.health = 0.0;
         assert!(!creature.alive());
+    }
+
+    fn herd(species: Species, at: TilePos) -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(CreaturePlugin)
+            .init_resource::<WorldClock>()
+            .insert_resource(map());
+        app.update();
+        app.world_mut().write_message(Spawn { species, pos: at });
+        app.update();
+        app
+    }
+
+    fn statuses(app: &mut App) -> Vec<Statuses> {
+        let mut query = app.world_mut().query::<&Statuses>();
+        query.iter(app.world()).cloned().collect()
+    }
+
+    #[test]
+    fn weather_afflicts_creatures_within_reach_and_relief_lifts_it() {
+        let mut app = herd(Species::Sheep, TilePos::new(10, 10));
+
+        app.world_mut().write_message(Afflict {
+            centre: TilePos::new(30, 30),
+            reach: 3.0,
+            status: Status::Frozen,
+            chance: 1.0,
+        });
+        app.update();
+        assert!(!statuses(&mut app)[0].has(Status::Frozen));
+
+        app.world_mut().write_message(Afflict {
+            centre: TilePos::new(12, 10),
+            reach: 3.0,
+            status: Status::Frozen,
+            chance: 1.0,
+        });
+        app.update();
+        assert!(statuses(&mut app)[0].has(Status::Frozen));
+
+        app.world_mut().write_message(Relieve {
+            centre: TilePos::new(10, 10),
+            reach: 0.0,
+            status: Status::Frozen,
+        });
+        app.update();
+        assert!(!statuses(&mut app)[0].has(Status::Frozen));
     }
 }
