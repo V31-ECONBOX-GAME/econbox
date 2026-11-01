@@ -34,6 +34,11 @@ pub struct ChunkMaterial {
     pub shadow: Vec4,
     #[uniform(7)]
     pub tint: Vec4,
+    #[texture(8)]
+    #[sampler(9)]
+    pub marks: Handle<Image>,
+    #[uniform(10)]
+    pub margin: Vec4,
 }
 
 impl Material2d for ChunkMaterial {
@@ -73,6 +78,7 @@ pub struct Drawn {
     pub chunks: HashMap<(u32, u32), ChunkView>,
     pub dirty: HashSet<(u32, u32)>,
     pub epoch: u64,
+    pub blank: Option<Handle<Image>>,
 }
 
 pub fn nearest(image: &mut Image) {
@@ -396,6 +402,7 @@ pub fn draw(
     night: Res<crate::quality::Night>,
     runup: Res<Runup>,
     clear: Option<Res<ClearColor>>,
+    burns: Option<Res<crate::fire_view::ScorchLayer>>,
     map: Option<Res<TileMap>>,
 ) {
     if !mode.tiles_on() {
@@ -456,7 +463,23 @@ pub fn draw(
             .get_or_insert_with(|| meshes.add(Rectangle::new(1.0, 1.0)))
             .clone();
 
+        let blank = drawn
+            .blank
+            .get_or_insert_with(|| images.add(crate::fire_view::blank_marks()))
+            .clone();
+
         for ((cx, cy), canvas) in canvases {
+            let marks = burns
+                .as_ref()
+                .filter(|burns| burns.epoch == drawn.epoch)
+                .and_then(|burns| burns.marks((cx, cy)))
+                .unwrap_or_else(|| blank.clone());
+            let margin = Vec4::new(
+                ((cx * CHUNK * PX) as i32 - canvas.area.x) as f32,
+                ((cy * CHUNK * PX) as i32 - canvas.area.y) as f32,
+                0.0,
+                0.0,
+            );
             let (tiles, runup_counts) = chunk_images(&canvas);
             let tiles = images.add(tiles);
             let runup_counts = images.add(runup_counts);
@@ -467,6 +490,8 @@ pub fn draw(
                 runup: runup_counts.clone(),
                 shadow,
                 tint,
+                marks,
+                margin,
             });
             let area = canvas.area;
             let unit = TILE_SIZE / PX as f32;

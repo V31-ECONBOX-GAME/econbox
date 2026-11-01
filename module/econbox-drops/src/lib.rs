@@ -19,10 +19,7 @@ use kind::{DROP_SCALE, FALLING_HEIGHT, FALLING_SPEED_RANDOM};
 
 pub const DROP_LAYER: f32 = 4.3;
 pub const HEIGHT_LIFT: f32 = 0.001;
-pub const FLASH_LAYER: f32 = 0.3;
 pub const FLASH_STATE: i32 = 14;
-pub const FLASH_SHADES: i32 = 30;
-pub const FLASH_ALPHA: f32 = 0.5;
 pub const FALL_RATE: f32 = 15.0;
 
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
@@ -127,22 +124,6 @@ impl Falling {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Glint {
-    pub pos: TilePos,
-    pub state: i32,
-}
-
-impl Glint {
-    pub fn alpha(self) -> f32 {
-        if self.state <= 0 {
-            0.0
-        } else {
-            self.state as f32 / FLASH_SHADES as f32 * FLASH_ALPHA
-        }
-    }
-}
-
 #[derive(Resource, Debug, Clone, Default)]
 pub struct DropArt(pub Vec<(DropKind, Vec<(Handle<Image>, Vec2)>)>);
 
@@ -172,7 +153,7 @@ pub fn spot_tile(spot: IVec2, width: u32, height: u32) -> Option<TilePos> {
 fn sweep(
     mut commands: Commands,
     mut fresh: MessageReader<NewWorld>,
-    left: Query<Entity, Or<(With<Falling>, With<Glint>)>>,
+    left: Query<Entity, With<Falling>>,
 ) {
     if fresh.read().count() == 0 {
         return;
@@ -206,7 +187,7 @@ impl Plugin for DropsPlugin {
             .add_systems(Startup, draw)
             .add_systems(
                 Update,
-                (sweep, launch, fall, glint, fade, place)
+                (sweep, launch, fall, place)
                     .chain()
                     .run_if(resource_exists::<TileMap>),
             );
@@ -369,53 +350,10 @@ fn fall(
     }
 }
 
-fn glint(mut commands: Commands, mut asked: MessageReader<Flash>, mut glints: Query<&mut Glint>) {
-    let mut fresh: Vec<Glint> = Vec::new();
-
-    for flash in asked.read() {
-        let state = flash.strength.min(FLASH_SHADES - 1);
-
-        if let Some(mut glint) = glints.iter_mut().find(|glint| glint.pos == flash.pos) {
-            glint.state = glint.state.max(state);
-        } else if let Some(glint) = fresh.iter_mut().find(|glint| glint.pos == flash.pos) {
-            glint.state = glint.state.max(state);
-        } else {
-            fresh.push(Glint {
-                pos: flash.pos,
-                state,
-            });
-        }
-    }
-
-    for glint in fresh {
-        commands.spawn((
-            glint,
-            Sprite {
-                color: Color::NONE,
-                custom_size: Some(Vec2::splat(TILE_SIZE)),
-                ..default()
-            },
-            Transform::from_xyz(0.0, 0.0, FLASH_LAYER),
-        ));
-    }
-}
-
-fn fade(mut commands: Commands, frames: Res<Frames>, mut flashes: Query<(Entity, &mut Glint)>) {
-    for (entity, mut flash) in &mut flashes {
-        flash.state -= frames.due as i32;
-
-        if flash.state < 0 {
-            commands.entity(entity).despawn();
-        }
-    }
-}
-
 fn place(
     bounds: Res<WorldBounds>,
     art: Res<DropArt>,
-    map: Res<TileMap>,
-    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility), Without<Glint>>,
-    mut flashes: Query<(&Glint, &mut Sprite, &mut Transform), Without<Falling>>,
+    mut drops: Query<(&Falling, &mut Sprite, &mut Transform, &mut Visibility)>,
 ) {
     let origin = -bounds.half();
 
@@ -430,14 +368,6 @@ fn place(
         }
         sprite.flip_x = drop.flip;
         *visibility = Visibility::Inherited;
-    }
-
-    for (flash, mut sprite, mut transform) in &mut flashes {
-        let row = map.height.saturating_sub(1 + flash.pos.y);
-        let corner = Vec2::new(flash.pos.x as f32, row as f32);
-        let at = origin + (corner + Vec2::splat(0.5)) * TILE_SIZE;
-        transform.translation = at.extend(FLASH_LAYER);
-        sprite.color = Color::srgba(1.0, 1.0, 1.0, flash.alpha());
     }
 }
 
@@ -521,17 +451,6 @@ mod tests {
         seen.dedup();
         assert!(seen.len() > 3);
         assert_eq!(rain.frame, rain_start);
-    }
-
-    #[test]
-    fn a_landing_flash_fades_from_a_quarter_white_to_nothing() {
-        let flash = Glint {
-            pos: TilePos::new(0, 0),
-            state: FLASH_STATE,
-        };
-
-        assert!((flash.alpha() - 14.0 / 30.0 * 0.5).abs() < 1e-6);
-        assert_eq!(Glint { state: 0, ..flash }.alpha(), 0.0);
     }
 
     #[test]

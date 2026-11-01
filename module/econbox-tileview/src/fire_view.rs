@@ -3,37 +3,31 @@ use crate::fire_art::{
     FLAME, FLAME_FRAMES, FLAME_PIVOT, SPARKLE, SPARKLE_FRAMES, flame_atlas, flame_set,
     sparkle_atlas,
 };
-use crate::quality::MapMode;
-use crate::view::{Drawn, nearest, tile_centre, visible_tiles};
+use crate::quality::{MapMode, Night};
+use crate::view::{ChunkMaterial, Drawn, nearest, tile_centre, visible_tiles};
 use bevy::asset::RenderAssetUsages;
 use bevy::asset::embedded_path;
 use bevy::asset::io::AssetSourceId;
 use bevy::asset::{AssetPath, embedded_asset};
-use bevy::mesh::MeshVertexBufferLayoutRef;
 use bevy::prelude::*;
-use bevy::render::render_resource::{
-    AsBindGroup, BlendComponent, BlendFactor, BlendOperation, BlendState, Extent3d,
-    RenderPipelineDescriptor, SpecializedMeshPipelineError, TextureDimension, TextureFormat,
-};
+use bevy::render::render_resource::{AsBindGroup, Extent3d, TextureDimension, TextureFormat};
 use bevy::shader::ShaderRef;
 use bevy::sprite::Anchor;
-use bevy::sprite_render::{
-    AlphaMode2d, Material2d, Material2dKey, Material2dPipeline, Material2dPlugin,
-};
+use bevy::sprite_render::{AlphaMode2d, Material2d, Material2dPlugin};
 use econbox_age::Dice;
 use econbox_camera::{TILE_SIZE, WorldCamera};
 use econbox_clock::{Frames, WorldClock};
 use econbox_fire::{Behaviour, Fires};
-use econbox_tilemap::{CHUNK, TileMap};
+use econbox_tilemap::{CHUNK, Flash, TileMap};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-pub const SCORCH_LAYER: f32 = 0.12;
 pub const FIRE_MAP_LAYER: f32 = 0.13;
 pub const FLAME_LAYER: f32 = 0.39;
 pub const SPARKLE_LAYER: f32 = 2.0;
 pub const BURNED_ALPHA: f32 = 0.5;
 pub const FLASH_STEPS: f32 = 30.0;
 pub const FLASH_ALPHA: f32 = 0.5;
+pub const FLASH_STEP: f32 = 2.0 / 60.0;
 pub const FIRE_COLOR: [u8; 3] = [0xff, 0x69, 0x30];
 pub const FLAME_SCALE: f32 = 0.15;
 pub const FLAME_FPS: f32 = 10.0;
@@ -48,6 +42,13 @@ pub struct GlowMaterial {
     #[texture(0)]
     #[sampler(1)]
     pub marks: Handle<Image>,
+    #[texture(2)]
+    #[sampler(3)]
+    pub minimap: Handle<Image>,
+    #[uniform(4)]
+    pub origin: Vec4,
+    #[uniform(5)]
+    pub tint: Vec4,
 }
 
 impl Material2d for GlowMaterial {
@@ -60,31 +61,6 @@ impl Material2d for GlowMaterial {
 
     fn alpha_mode(&self) -> AlphaMode2d {
         AlphaMode2d::Blend
-    }
-
-    fn specialize(
-        _pipeline: &Material2dPipeline,
-        descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
-        _key: Material2dKey<Self>,
-    ) -> Result<(), SpecializedMeshPipelineError> {
-        if let Some(fragment) = descriptor.fragment.as_mut() {
-            for target in fragment.targets.iter_mut().flatten() {
-                target.blend = Some(BlendState {
-                    color: BlendComponent {
-                        src_factor: BlendFactor::SrcAlpha,
-                        dst_factor: BlendFactor::One,
-                        operation: BlendOperation::Add,
-                    },
-                    alpha: BlendComponent {
-                        src_factor: BlendFactor::Zero,
-                        dst_factor: BlendFactor::One,
-                        operation: BlendOperation::Add,
-                    },
-                });
-            }
-        }
-        Ok(())
     }
 }
 
@@ -100,33 +76,35 @@ pub fn flash_alpha(state: u8) -> f32 {
     f32::from(state) / FLASH_STEPS * FLASH_ALPHA
 }
 
-fn to_linear(value: f32) -> f32 {
-    Color::srgb(value, value, value).to_linear().red
+fn byte(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
-fn to_srgb(value: f32) -> f32 {
-    Color::linear_rgb(value, value, value).to_srgba().red
+pub fn marks_pixel(stage: u8, flash: u8, burning: bool) -> [u8; 4] {
+    [
+        byte(burned_alpha(stage)),
+        byte(flash_alpha(flash)),
+        if burning { 255 } else { 0 },
+        0,
+    ]
 }
 
-pub fn linear_black(alpha: f32) -> f32 {
-    1.0 - to_linear(1.0 - alpha)
-}
-
-pub fn scorch_pixel(stage: u8, flash: u8) -> [u8; 4] {
-    let black = linear_black(burned_alpha(stage));
-    let white = flash_alpha(flash);
-    let alpha = white + black * (1.0 - white);
-    if alpha <= 0.0 {
-        return [0; 4];
-    }
-    let level = (to_srgb(white / alpha) * 255.0).round() as u8;
-    [level, level, level, (alpha * 255.0).round() as u8]
-}
-
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ScorchChunk {
-    pub x: u32,
-    pub y: u32,
+pub fn blend_marks(color: [f32; 3], marks: [u8; 4], fire: bool) -> [f32; 3] {
+    let black = f32::from(marks[0]) / 255.0;
+    let white = f32::from(marks[1]) / 255.0;
+    let flame = if fire {
+        f32::from(marks[2]) / 255.0
+    } else {
+        0.0
+    };
+    let [fr, fg, fb] = FIRE_COLOR.map(|c| f32::from(c) / 255.0);
+    let mut out = color.map(|c| c * (1.0 - black));
+    out = out.map(|c| c + (1.0 - c) * white);
+    [
+        (out[0] + fr * flame).min(1.0),
+        (out[1] + fg * flame).min(1.0),
+        (out[2] + fb * flame).min(1.0),
+    ]
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,21 +112,59 @@ pub struct GlowChunk;
 
 #[derive(Debug, Clone)]
 pub struct ScorchView {
-    pub scorch: Entity,
-    pub scorch_image: Handle<Image>,
     pub glow: Entity,
-    pub glow_image: Handle<Image>,
+    pub image: Handle<Image>,
+    pub material: Handle<GlowMaterial>,
 }
 
 #[derive(Resource, Debug, Clone, Default)]
 pub struct ScorchLayer {
     pub epoch: u64,
     pub chunks: HashMap<(u32, u32), ScorchView>,
-    pub flashes: BTreeMap<u32, u8>,
+    pub flashes: BTreeMap<u32, i32>,
+    pub shown: BTreeMap<u32, u8>,
+    pub clock: f32,
     pub quad: Option<Handle<Mesh>>,
 }
 
-fn chunk_image(width: u32, height: u32) -> Image {
+impl ScorchLayer {
+    pub fn flash(&mut self, index: u32, strength: i32) {
+        let strength = if strength < 0 || strength >= FLASH_STEPS as i32 {
+            FLASH_STEPS as i32 - 1
+        } else {
+            strength
+        };
+        let state = self.flashes.entry(index).or_insert(0);
+        *state = (*state).max(strength);
+    }
+
+    pub fn tick(&mut self, seconds: f32) -> bool {
+        self.clock += seconds;
+        let mut stepped = false;
+        let mut steps = 0;
+        while self.clock >= FLASH_STEP && steps < 4 {
+            self.clock -= FLASH_STEP;
+            steps += 1;
+            stepped = true;
+            let ScorchLayer { flashes, shown, .. } = self;
+            flashes.retain(|&index, state| {
+                shown.insert(index, *state as u8);
+                *state -= 1;
+                *state >= 0
+            });
+        }
+        if self.clock > FLASH_STEP {
+            self.clock = 0.0;
+        }
+        stepped
+    }
+
+    pub fn marks(&self, chunk: (u32, u32)) -> Option<Handle<Image>> {
+        self.chunks.get(&chunk).map(|view| view.image.clone())
+    }
+}
+
+fn marks_image(width: u32, height: u32) -> Image {
     let mut image = Image::new_fill(
         Extent3d {
             width: width.max(1),
@@ -157,11 +173,15 @@ fn chunk_image(width: u32, height: u32) -> Image {
         },
         TextureDimension::D2,
         &[0, 0, 0, 0],
-        TextureFormat::Rgba8UnormSrgb,
+        TextureFormat::Rgba8Unorm,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
     nearest(&mut image);
     image
+}
+
+pub fn blank_marks() -> Image {
+    marks_image(1, 1)
 }
 
 fn chunk_size(map: &TileMap, cx: u32, cy: u32) -> (u32, u32) {
@@ -171,32 +191,54 @@ fn chunk_size(map: &TileMap, cx: u32, cy: u32) -> (u32, u32) {
     )
 }
 
+fn map_tint(night: Night, mode: &MapMode) -> Vec4 {
+    let [r, g, b] = night.tint();
+    let linear = Color::srgb(r, g, b).to_linear();
+    Vec4::new(linear.red, linear.green, linear.blue, mode.map_alpha())
+}
+
 pub fn scorch(
     mut commands: Commands,
+    time: Res<Time<Real>>,
     fires: Option<Res<Fires>>,
     map: Option<Res<TileMap>>,
     drawn: Res<Drawn>,
     mode: Res<MapMode>,
+    night: Res<Night>,
+    mut asked: MessageReader<Flash>,
     mut layer: ResMut<ScorchLayer>,
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<GlowMaterial>>,
+    mut chunks: ResMut<Assets<ChunkMaterial>>,
     mut glows: Query<&mut Visibility, With<GlowChunk>>,
 ) {
     let (Some(fires), Some(map)) = (fires, map) else {
+        asked.clear();
         return;
     };
     if fires.width != map.width || fires.height != map.height || map.width == 0 {
+        asked.clear();
         return;
     }
 
     if layer.epoch != drawn.epoch {
         for (_, view) in layer.chunks.drain() {
-            commands.entity(view.scorch).despawn();
             commands.entity(view.glow).despawn();
+            images.remove(&view.image);
         }
         layer.flashes.clear();
+        layer.shown.clear();
         layer.epoch = drawn.epoch;
+    }
+
+    for flash in asked.read() {
+        if flash.pos.x < map.width && flash.pos.y < map.height {
+            layer.flash(flash.pos.y * map.width + flash.pos.x, flash.strength);
+        }
+    }
+    for &(index, value) in &fires.flashes {
+        layer.flash(index, i32::from(value));
     }
 
     let mut dirty: HashSet<(u32, u32)> = HashSet::new();
@@ -209,66 +251,63 @@ pub fn scorch(
     for &index in &fires.changed {
         dirty.insert(chunk_of(index));
     }
-    for &(index, value) in &fires.flashes {
-        let state = layer.flashes.entry(index).or_default();
-        *state = (*state).max(value);
-    }
-    for &index in layer.flashes.keys() {
-        dirty.insert(chunk_of(index));
+    if layer.tick(time.delta_secs()) {
+        for &index in layer.shown.keys() {
+            dirty.insert(chunk_of(index));
+        }
     }
 
     let quad = layer
         .quad
         .get_or_insert_with(|| meshes.add(Rectangle::new(1.0, 1.0)))
         .clone();
+    let minimap = drawn.minimap.clone().unwrap_or_default();
+    let tint = map_tint(*night, &mode);
 
     for (cx, cy) in dirty {
         let (width, height) = chunk_size(&map, cx, cy);
         let ScorchLayer {
-            chunks, flashes, ..
+            chunks: views,
+            shown,
+            ..
         } = &mut *layer;
-        let view = chunks.entry((cx, cy)).or_insert_with(|| {
-            let scorch_image = images.add(chunk_image(width, height));
-            let glow_image = images.add(chunk_image(width, height));
+        let view = views.entry((cx, cy)).or_insert_with(|| {
+            let image = images.add(marks_image(width, height));
             let centre = tile_centre(
                 &map,
                 (cx * CHUNK) as f32 + width as f32 * 0.5,
                 (cy * CHUNK) as f32 + height as f32 * 0.5,
             );
             let size = Vec2::new(width as f32, height as f32) * TILE_SIZE;
-            let scorch = commands
-                .spawn((
-                    ScorchChunk { x: cx, y: cy },
-                    Sprite {
-                        image: scorch_image.clone(),
-                        custom_size: Some(size),
-                        ..default()
-                    },
-                    Transform::from_xyz(centre.x, centre.y, SCORCH_LAYER),
-                ))
-                .id();
             let material = materials.add(GlowMaterial {
-                marks: glow_image.clone(),
+                marks: image.clone(),
+                minimap: minimap.clone(),
+                origin: Vec4::new((cx * CHUNK) as f32, (cy * CHUNK) as f32, 0.0, 0.0),
+                tint,
             });
             let glow = commands
                 .spawn((
                     GlowChunk,
                     Mesh2d(quad.clone()),
-                    MeshMaterial2d(material),
+                    MeshMaterial2d(material.clone()),
                     Transform::from_xyz(centre.x, centre.y, FIRE_MAP_LAYER)
                         .with_scale(size.extend(1.0)),
                     Visibility::Hidden,
                 ))
                 .id();
+            if let Some(tiles) = drawn.chunks.get(&(cx, cy))
+                && let Some(mut chunk) = chunks.get_mut(&tiles.material)
+            {
+                chunk.marks = image.clone();
+            }
             ScorchView {
-                scorch,
-                scorch_image,
                 glow,
-                glow_image,
+                image,
+                material,
             }
         });
 
-        if let Some(mut image) = images.get_mut(&view.scorch_image)
+        if let Some(mut image) = images.get_mut(&view.image)
             && let Some(data) = image.data.as_mut()
         {
             for row in 0..height {
@@ -276,40 +315,32 @@ pub fn scorch(
                     let x = cx * CHUNK + column;
                     let y = cy * CHUNK + row;
                     let index = y * map.width + x;
-                    let pixel = scorch_pixel(
+                    let pixel = marks_pixel(
                         fires.burned_stage(x, y),
-                        flashes.get(&index).copied().unwrap_or_default(),
+                        shown.get(&index).copied().unwrap_or_default(),
+                        fires.on_fire(x, y),
                     );
                     let at = ((row * width + column) * 4) as usize;
                     data[at..at + 4].copy_from_slice(&pixel);
                 }
             }
         }
-        if let Some(mut image) = images.get_mut(&view.glow_image)
-            && let Some(data) = image.data.as_mut()
+    }
+
+    let ScorchLayer { flashes, shown, .. } = &mut *layer;
+    shown.retain(|index, state| *state > 0 || flashes.contains_key(index));
+
+    for view in layer.chunks.values() {
+        if let Some(material) = materials.get(&view.material)
+            && (material.tint != tint || material.minimap != minimap)
+            && let Some(mut material) = materials.get_mut(&view.material)
         {
-            for row in 0..height {
-                for column in 0..width {
-                    let x = cx * CHUNK + column;
-                    let y = cy * CHUNK + row;
-                    let [r, g, b] = FIRE_COLOR;
-                    let alpha = if fires.on_fire(x, y) { 255 } else { 0 };
-                    let at = ((row * width + column) * 4) as usize;
-                    data[at..at + 4].copy_from_slice(&[r, g, b, alpha]);
-                }
-            }
+            material.tint = tint;
+            material.minimap = minimap.clone();
         }
     }
 
-    layer.flashes.retain(|_, state| {
-        if *state == 0 {
-            return false;
-        }
-        *state -= 1;
-        true
-    });
-
-    let shown = if mode.low_res && fires.has_fires() {
+    let shown = if mode.map_on() {
         Visibility::Inherited
     } else {
         Visibility::Hidden
@@ -569,6 +600,7 @@ impl Plugin for FireViewPlugin {
         embedded_asset!(app, "glow.wgsl");
         app.add_plugins(Material2dPlugin::<GlowMaterial>::default())
             .init_resource::<ScorchLayer>()
+            .add_message::<Flash>()
             .init_resource::<Flames>()
             .init_resource::<Sparkles>()
             .init_resource::<Frames>()
@@ -585,27 +617,48 @@ mod tests {
         assert_eq!(burned_alpha(0), 0.0);
         assert_eq!(burned_alpha(1), 0.0);
         assert!((burned_alpha(15) - 14.0 / 15.0 * 0.5).abs() < 1e-6);
-        assert_eq!(scorch_pixel(0, 0), [0; 4]);
-        let dark = scorch_pixel(15, 0);
-        assert_eq!(dark[0], 0);
-        assert!(dark[3] > (0.4667 * 255.0) as u8);
+        assert_eq!(marks_pixel(0, 0, false), [0; 4]);
+        assert_eq!(marks_pixel(15, 0, false)[0], 119);
     }
 
     #[test]
-    fn a_black_overlay_keeps_its_gamma_strength_in_linear_blending() {
-        let gamma = 0.6_f32;
-        let alpha = 0.3;
-        let want = to_linear(gamma * (1.0 - alpha));
-        let got = to_linear(gamma) * (1.0 - linear_black(alpha));
-        assert!((want - got).abs() < 0.01, "{want} {got}");
+    fn marks_blend_in_gamma_space_like_unity() {
+        let grass = [0.4, 0.6, 0.2];
+        let flashed = blend_marks(grass, marks_pixel(0, 29, false), false);
+        let white = f32::from(byte(flash_alpha(29))) / 255.0;
+        assert!((flashed[0] - (0.4 + 0.6 * white)).abs() < 1e-6);
+
+        let scorched = blend_marks(grass, marks_pixel(15, 0, false), false);
+        assert!((scorched[1] - 0.6 * (1.0 - 119.0 / 255.0)).abs() < 1e-6);
+
+        let burning = blend_marks(grass, marks_pixel(0, 0, true), true);
+        assert_eq!(burning[0], 1.0);
+        assert!((burning[2] - (0.2 + 48.0 / 255.0)).abs() < 1e-6);
+        assert_eq!(blend_marks(grass, marks_pixel(0, 0, true), false), grass);
     }
 
     #[test]
     fn a_flash_of_ten_is_a_sixth_white() {
         assert!((flash_alpha(10) - 1.0 / 6.0).abs() < 1e-6);
-        let pixel = scorch_pixel(0, 10);
-        assert_eq!(&pixel[..3], &[255, 255, 255]);
-        assert_eq!(pixel[3], 43);
+        assert_eq!(marks_pixel(0, 10, false)[1], 43);
+    }
+
+    #[test]
+    fn a_flash_fades_one_shade_every_other_frame_and_clamps_to_twenty_nine() {
+        let mut layer = ScorchLayer::default();
+        layer.flash(7, 99);
+        assert_eq!(layer.flashes[&7], 29);
+        layer.flash(7, 3);
+        assert_eq!(layer.flashes[&7], 29);
+
+        assert!(!layer.tick(FLASH_STEP * 0.5));
+        assert!(layer.tick(FLASH_STEP * 0.5));
+        assert_eq!(layer.shown[&7], 29);
+        for _ in 0..29 {
+            layer.tick(FLASH_STEP);
+        }
+        assert_eq!(layer.shown[&7], 0);
+        assert!(!layer.flashes.contains_key(&7));
     }
 
     #[test]

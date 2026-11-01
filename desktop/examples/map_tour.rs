@@ -15,6 +15,7 @@ enum Step {
     Look(f32, f32),
     Paint,
     Ignite,
+    Drops,
     Speed(&'static str),
     Shot(&'static str),
 }
@@ -82,10 +83,16 @@ fn script() -> Vec<Step> {
         Step::Speed("x1"),
         Step::Wait(5),
         Step::Shot("5c-scorched"),
+        Step::Drops,
+        Step::Wait(40),
+        Step::Shot("5d-drops"),
         Step::Span(300.0),
         Step::Look(0.0, 0.0),
         Step::Wait(90),
         Step::Shot("6-painted-map"),
+        Step::Ignite,
+        Step::Wait(10),
+        Step::Shot("6a-map-fire"),
         Step::Span(460.0),
         Step::Look(0.0, 0.0),
         Step::Wait(90),
@@ -173,6 +180,7 @@ fn drive(
     mut camera: Query<&mut Transform, With<WorldCamera>>,
     mut painted: MessageWriter<Painted>,
     mut ignite: MessageWriter<Ignite>,
+    mut drops: MessageWriter<econbox_drops::SpawnDrop>,
     mut exit: MessageWriter<AppExit>,
     mut map: Option<ResMut<TileMap>>,
     mode: Res<MapMode>,
@@ -231,6 +239,19 @@ fn drive(
                 }
             }
         }
+        Step::Drops => {
+            if let (Some(map), Some(spot)) = (map.as_deref(), tour.spot) {
+                for (index, kind) in econbox_drops::DROPS.into_iter().enumerate() {
+                    let x = spot.x as i32 - 8 + index as i32 * 2;
+                    let y = map.height as i32 - 1 - (spot.y as i32 + 8);
+                    drops.write(econbox_drops::SpawnDrop {
+                        kind,
+                        spot: IVec2::new(x, y),
+                        height: Some(3.0),
+                    });
+                }
+            }
+        }
         Step::Speed(id) => {
             clock.select(id);
         }
@@ -251,6 +272,12 @@ fn drive(
     }
 
     tour.at += 1;
+}
+
+fn listen(started: Query<&econbox_toolbar::sound::Sounding, Added<econbox_toolbar::sound::Sounding>>) {
+    for sound in &started {
+        info!("landing sound {:?}", sound.0);
+    }
 }
 
 fn age(mut ages: ResMut<Ages>) {
@@ -284,6 +311,6 @@ fn main() {
         out,
         spot: None,
     })
-    .add_systems(Update, (offscreen, drive, age));
+    .add_systems(Update, (offscreen, drive, age, listen));
     app.run();
 }

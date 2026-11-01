@@ -1,6 +1,7 @@
 pub mod config;
 pub mod hud;
 pub mod prelude;
+pub mod splash;
 pub mod world;
 
 use config::properties::{self, ApplicationProperties, LoggingProperties, ToolbarProperties};
@@ -20,6 +21,7 @@ use econbox_tileview::{PowerSelected, ScreenOptions, TileViewPlugin};
 use econbox_toolbar::{BarSize, ToolbarPlugin};
 use hud::HudPlugin;
 use prelude::*;
+use splash::SplashPlugin;
 
 pub fn ocean() -> Color {
     let [r, g, b] = Ground::DeepOcean.color();
@@ -79,7 +81,7 @@ pub fn app_with(source: &Config) -> App {
             FirePlugin,
             TemperaturePlugin,
         ))
-        .add_plugins((HudPlugin, ToolbarPlugin))
+        .add_plugins((HudPlugin, SplashPlugin, ToolbarPlugin))
         .add_systems(Update, (screen_options, age_options, power_selected));
 
     #[cfg(feature = "dev")]

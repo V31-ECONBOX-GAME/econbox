@@ -20,7 +20,7 @@ pub mod settings;
 mod side;
 pub mod sidebar;
 pub mod size;
-mod sound;
+pub mod sound;
 pub mod strip;
 mod tabs;
 mod tips;
@@ -40,7 +40,7 @@ use econbox_clouds::SpawnCloud;
 pub use catalog::{find, home_of};
 pub use options::{Options, SettingsFile};
 pub use size::{BarSize, UiLayer};
-pub use sound::Cue;
+pub use sound::{Cue, Splash, Voice};
 pub use strip::StripOrder;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -317,6 +317,7 @@ impl Plugin for ToolbarPlugin {
                         pointer::footprint,
                         size::fade,
                         sound::play,
+                        sound::splashes,
                         options::track,
                         options::save,
                         options::apply_display,
