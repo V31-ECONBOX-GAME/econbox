@@ -16,6 +16,7 @@ enum Step {
     Paint,
     Ignite,
     Drops,
+    Glows,
     Speed(&'static str),
     Shot(&'static str),
 }
@@ -86,6 +87,17 @@ fn script() -> Vec<Step> {
         Step::Drops,
         Step::Wait(40),
         Step::Shot("5d-drops"),
+        Step::Glows,
+        Step::Wait(45),
+        Step::Glows,
+        Step::Wait(45),
+        Step::Glows,
+        Step::Wait(45),
+        Step::Glows,
+        Step::Wait(45),
+        Step::Shot("5e-landing-particles"),
+        Step::Wait(120),
+        Step::Shot("5f-particles-older"),
         Step::Span(300.0),
         Step::Look(0.0, 0.0),
         Step::Wait(90),
@@ -186,6 +198,7 @@ fn drive(
     mode: Res<MapMode>,
     target: Option<Res<Offscreen>>,
     mut clock: ResMut<econbox_clock::WorldClock>,
+    particles: Res<econbox_tileview::particles::GlowParticles>,
 ) {
     if tour.spot.is_none()
         && let Some(map) = map.as_deref()
@@ -252,16 +265,36 @@ fn drive(
                 }
             }
         }
+        Step::Glows => {
+            if let (Some(map), Some(spot)) = (map.as_deref(), tour.spot) {
+                for index in 0..24 {
+                    let x = spot.x as i32 + 10 + index % 8;
+                    let y = map.height as i32 - 1 - (spot.y as i32 - 6 + index / 3);
+                    let kind = if index % 2 == 0 {
+                        econbox_drops::DropKind::Acid
+                    } else {
+                        econbox_drops::DropKind::Fire
+                    };
+                    drops.write(econbox_drops::SpawnDrop {
+                        kind,
+                        spot: IVec2::new(x, y),
+                        height: Some(3.0),
+                    });
+                }
+            }
+        }
         Step::Speed(id) => {
             clock.select(id);
         }
         Step::Shot(name) => {
             let path = tour.out.join(format!("{name}.png"));
             info!(
-                "shot {} low_res={} factor={}",
+                "shot {} low_res={} factor={} fire={} smoke={}",
                 path.display(),
                 mode.low_res,
-                mode.factor
+                mode.factor,
+                particles.fire.live.len(),
+                particles.smoke.live.len()
             );
             let shot = match target.as_deref() {
                 Some(Offscreen(image)) => Screenshot::image(image.clone()),
@@ -274,7 +307,9 @@ fn drive(
     tour.at += 1;
 }
 
-fn listen(started: Query<&econbox_toolbar::sound::Sounding, Added<econbox_toolbar::sound::Sounding>>) {
+fn listen(
+    started: Query<&econbox_toolbar::sound::Sounding, Added<econbox_toolbar::sound::Sounding>>,
+) {
     for sound in &started {
         info!("landing sound {:?}", sound.0);
     }

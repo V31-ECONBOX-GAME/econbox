@@ -52,6 +52,19 @@ pub struct Flash {
     pub strength: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Glow {
+    Fire,
+    Smoke,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Emit {
+    pub glow: Glow,
+    pub pos: TilePos,
+    pub unless_flashing: bool,
+}
+
 #[derive(Resource, Debug, Clone, PartialEq)]
 pub struct TileMap {
     pub width: u32,

@@ -10,6 +10,7 @@ econbox-age = { workspace = true }
 econbox-camera = { workspace = true }
 econbox-clock = { workspace = true }
 econbox-fire = { workspace = true }
+econbox-noise = { workspace = true }
 econbox-tile = { workspace = true }
 econbox-tilemap = { workspace = true }
 econbox-worldgen = { workspace = true }

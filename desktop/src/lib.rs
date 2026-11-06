@@ -140,6 +140,8 @@ fn screen_options(options: Res<econbox_toolbar::Options>, mut screen: ResMut<Scr
         transition: options.on("minimap_transition_animation"),
         shadows: options.on("shadows"),
         tree_wind: options.on("tree_wind"),
+        fire: options.on("fire"),
+        smoke: options.on("smoke"),
     };
     screen.set_if_neq(wanted);
 }

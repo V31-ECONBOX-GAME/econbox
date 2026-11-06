@@ -3,7 +3,7 @@ use econbox_creature::{Afflict, Census, Harm, Relieve, Spawn, Species, Status};
 use econbox_noise::Randy;
 use econbox_temperature::{Frost, Touched, freeze, thaw};
 use econbox_tile::{Ground, Overlay, Tile};
-use econbox_tilemap::{TileMap, TilePos};
+use econbox_tilemap::{Emit, Glow, TileMap, TilePos};
 
 pub const TERRAFORM_FLASH: i32 = 20;
 pub const UNIT_REACH: f32 = 3.0;
@@ -14,6 +14,8 @@ pub const SNOW_SPREAD: f32 = 11.0;
 pub const CHUNK_SIZE: u32 = 16;
 pub const CROWD: usize = 4;
 pub const SAME_STRENGTH_ODDS: f32 = 0.05;
+pub const ACID_SMOKE_ODDS: f32 = 0.2;
+pub const FIRE_GLOW_ODDS: f32 = 0.2;
 
 #[derive(Debug, Clone, Default)]
 pub struct Landing {
@@ -21,6 +23,7 @@ pub struct Landing {
     pub flashes: Vec<(TilePos, i32)>,
     pub ignite: Vec<TilePos>,
     pub douse: Vec<TilePos>,
+    pub emit: Vec<Emit>,
     pub afflict: Vec<Afflict>,
     pub relieve: Vec<Relieve>,
     pub harm: Vec<Harm>,
@@ -306,6 +309,14 @@ fn acid_on(
         }
     }
 
+    if randy.random_chance(ACID_SMOKE_ODDS) {
+        landing.emit.push(Emit {
+            glow: Glow::Smoke,
+            pos,
+            unless_flashing: false,
+        });
+    }
+
     landing.harm.push(Harm {
         centre: pos,
         reach: UNIT_REACH,
@@ -420,6 +431,13 @@ pub fn land(
         }
         DropKind::Acid => acid_on(map, frost, pos, randy, &mut landing),
         DropKind::Fire => {
+            if randy.random_chance(FIRE_GLOW_ODDS) {
+                landing.emit.push(Emit {
+                    glow: Glow::Fire,
+                    pos,
+                    unless_flashing: true,
+                });
+            }
             landing.ignite.push(pos);
             landing.afflict(pos, Status::Burning, 1.0);
             if map
@@ -545,6 +563,54 @@ mod tests {
         assert_eq!(landing.ignite, [TilePos::new(3, 3)]);
         assert_eq!(landing.afflict[0].status, Status::Burning);
         assert_eq!(landing.afflict[0].reach, UNIT_REACH);
+    }
+
+    #[test]
+    fn one_acid_drop_in_five_smokes_and_one_fire_drop_in_five_glows() {
+        let mut randy = Randy::new(3);
+        let mut count = |kind| {
+            let mut emits = Vec::new();
+            for _ in 0..1000 {
+                let mut map = field(Ground::SoilLow, Overlay::Grass);
+                emits.extend(
+                    land(
+                        kind,
+                        &mut map,
+                        &mut Frost::default(),
+                        TilePos::new(3, 3),
+                        &Census::default(),
+                        0,
+                        &mut randy,
+                    )
+                    .emit,
+                );
+            }
+            emits
+        };
+
+        let smoke = count(DropKind::Acid);
+        assert!((120..280).contains(&smoke.len()), "{}", smoke.len());
+        assert!(
+            smoke
+                .iter()
+                .all(|emit| emit.glow == Glow::Smoke && !emit.unless_flashing)
+        );
+
+        let fire = count(DropKind::Fire);
+        assert!((120..280).contains(&fire.len()), "{}", fire.len());
+        assert!(
+            fire.iter()
+                .all(|emit| emit.glow == Glow::Fire && emit.unless_flashing)
+        );
+
+        for kind in [
+            DropKind::Rain,
+            DropKind::Lava,
+            DropKind::Snow,
+            DropKind::Ash,
+        ] {
+            assert!(count(kind).is_empty(), "{kind:?}");
+        }
     }
 
     #[test]

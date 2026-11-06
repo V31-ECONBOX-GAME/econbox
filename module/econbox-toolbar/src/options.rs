@@ -223,7 +223,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         I(Icon::Flame),
-        Some("fire"),
+        None,
     ),
     toggle(
         "vignette",
@@ -250,7 +250,7 @@ pub const SETTINGS: [Setting; 33] = [
         Graphics,
         true,
         I(Icon::Cloud),
-        Some("smoke"),
+        None,
     ),
     toggle(
         "shadows",

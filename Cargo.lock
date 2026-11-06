@@ -2688,6 +2688,7 @@ dependencies = [
  "econbox-camera",
  "econbox-clock",
  "econbox-fire",
+ "econbox-noise",
  "econbox-tile",
  "econbox-tilemap",
  "econbox-worldgen",

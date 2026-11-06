@@ -105,6 +105,8 @@ pub struct ScreenOptions {
     pub transition: bool,
     pub shadows: bool,
     pub tree_wind: bool,
+    pub fire: bool,
+    pub smoke: bool,
 }
 
 impl Default for ScreenOptions {
@@ -115,6 +117,8 @@ impl Default for ScreenOptions {
             transition: true,
             shadows: true,
             tree_wind: true,
+            fire: true,
+            smoke: true,
         }
     }
 }

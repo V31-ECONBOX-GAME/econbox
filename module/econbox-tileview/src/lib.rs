@@ -9,6 +9,7 @@ pub mod fire_view;
 pub mod look;
 pub mod objects;
 pub mod objects_view;
+pub mod particles;
 pub mod quality;
 pub mod sleek;
 pub mod thing_art;
@@ -64,6 +65,7 @@ impl Plugin for TileViewPlugin {
             SleekPlugin,
             AmbiencePlugin,
             fire_view::FireViewPlugin,
+            particles::ParticlesPlugin,
         ))
         .init_resource::<objects_view::ObjectClock>()
         .init_resource::<quality::Night>()

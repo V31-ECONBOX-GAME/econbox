@@ -947,9 +947,11 @@ mod tests {
 
     #[test]
     fn options_without_a_system_say_what_they_wait_for() {
-        let fire = tip_for(setting("fire").unwrap());
-        assert!(fire.warn);
-        assert!(fire.foot.unwrap().contains("fire"));
+        let names = tip_for(setting("ui_size_map_names").unwrap());
+        assert!(names.warn);
+        assert!(names.foot.unwrap().contains("map names"));
+        assert!(!tip_for(setting("fire").unwrap()).warn);
+        assert!(!tip_for(setting("smoke").unwrap()).warn);
         assert!(!tip_for(setting("ui_size_main").unwrap()).warn);
     }
 }

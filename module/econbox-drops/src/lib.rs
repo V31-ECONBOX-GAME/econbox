@@ -14,7 +14,7 @@ use econbox_clock::{Frames, WorldClock};
 use econbox_creature::{Afflict, Census, Creature, Harm, Relieve, Spawn, Strike, tile_of};
 use econbox_noise::Randy;
 use econbox_temperature::Frost;
-use econbox_tilemap::{Douse, Flash, Ignite, NewWorld, Painted, TileMap, TilePos};
+use econbox_tilemap::{Douse, Emit, Flash, Ignite, NewWorld, Painted, TileMap, TilePos};
 use kind::{DROP_SCALE, FALLING_HEIGHT, FALLING_SPEED_RANDOM};
 
 pub const DROP_LAYER: f32 = 4.3;
@@ -177,6 +177,7 @@ impl Plugin for DropsPlugin {
             .add_message::<Painted>()
             .add_message::<Strike>()
             .add_message::<Ignite>()
+            .add_message::<Emit>()
             .add_message::<Douse>()
             .add_message::<Afflict>()
             .add_message::<Relieve>()
@@ -231,6 +232,7 @@ pub struct Aftermath<'w> {
     flashes: MessageWriter<'w, Flash>,
     ignite: MessageWriter<'w, Ignite>,
     douse: MessageWriter<'w, Douse>,
+    emit: MessageWriter<'w, Emit>,
     afflict: MessageWriter<'w, Afflict>,
     relieve: MessageWriter<'w, Relieve>,
     harm: MessageWriter<'w, Harm>,
@@ -248,6 +250,9 @@ impl Aftermath<'_> {
         }
         for pos in landing.douse {
             self.douse.write(Douse { pos });
+        }
+        for emit in landing.emit {
+            self.emit.write(emit);
         }
         for afflict in landing.afflict {
             self.afflict.write(afflict);
